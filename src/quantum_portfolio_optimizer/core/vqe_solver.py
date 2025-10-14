@@ -18,8 +18,11 @@ class VQEResult:
     optimal_parameters: np.ndarray
     optimal_value: float
     history: List[float]
+    best_history: List[float]
     num_evaluations: int
     ansatz_report: dict
+    converged: bool
+    optimizer_message: str
 
 
 class PortfolioVQESolver:
@@ -31,13 +34,14 @@ class PortfolioVQESolver:
         ansatz_name: str = "real_amplitudes",
         ansatz_options: Optional[dict] = None,
         init_strategy: str = "zeros",
-        parameter_bounds: Optional[float] = np.pi,
+        parameter_bounds: Optional[float] = 2 * np.pi,  # Extended range from paper
         optimizer_factory: Optional[
             Callable[[Callable[[np.ndarray], float]], DifferentialEvolutionConfig]
         ] = None,
         optimizer_config: Optional[DifferentialEvolutionConfig] = None,
         seed: Optional[int] = None,
         shots: Optional[int] = None,
+        progress_callback: Optional[Callable[[int, float, float], None]] = None,
     ) -> None:
         self.estimator = estimator or get_default_estimator(shots=shots)
         self.ansatz_name = ansatz_name
@@ -47,6 +51,7 @@ class PortfolioVQESolver:
         self.optimizer_factory = optimizer_factory
         self.optimizer_config = optimizer_config
         self.seed = seed
+        self.progress_callback = progress_callback
 
     def solve(self, qubo: QUBOProblem) -> VQEResult:
         num_qubits = qubo.num_variables
@@ -57,8 +62,11 @@ class PortfolioVQESolver:
         initial_point = initialise_parameters(ansatz, strategy=self.init_strategy, seed=self.seed)
         observable = qubo.to_pauli()
         history: List[float] = []
+        best_history: List[float] = []
+        best_so_far = np.inf
 
         def energy_evaluation(parameters: np.ndarray) -> float:
+            nonlocal best_so_far
             circuit = ansatz.assign_parameters(parameters)
             try:
                 job = self.estimator.run(circuits=[circuit], observables=[observable])
@@ -67,6 +75,11 @@ class PortfolioVQESolver:
             result = job.result()
             energy = self._extract_energy(result)
             history.append(energy)
+            if energy < best_so_far:
+                best_so_far = energy
+            best_history.append(best_so_far)
+            if self.progress_callback:
+                self.progress_callback(len(history), energy, best_so_far)
             return energy
 
         if isinstance(self.parameter_bounds, tuple):
@@ -74,7 +87,7 @@ class PortfolioVQESolver:
         elif isinstance(self.parameter_bounds, (int, float)):
             bounds = [(-abs(self.parameter_bounds), abs(self.parameter_bounds))] * ansatz.num_parameters
         elif self.parameter_bounds is None:
-            bounds = [(-np.pi, np.pi)] * ansatz.num_parameters
+            bounds = [(-2*np.pi, 2*np.pi)] * ansatz.num_parameters  # Extended range from paper
         else:
             bounds = list(self.parameter_bounds)
 
@@ -84,6 +97,7 @@ class PortfolioVQESolver:
         else:
             config = DifferentialEvolutionConfig(
                 bounds=bounds,
+                strategy=config.strategy,
                 maxiter=config.maxiter,
                 popsize=config.popsize,
                 tol=config.tol,
@@ -91,11 +105,15 @@ class PortfolioVQESolver:
                 recombination=config.recombination,
                 seed=config.seed or self.seed,
                 polish=config.polish,
+                convergence_threshold=config.convergence_threshold,
+                convergence_window=config.convergence_window,
+                adaptive_mutation=config.adaptive_mutation,
+                adaptive_recombination=config.adaptive_recombination,
             )
 
         _ = initial_point  # kept for future warm-start schemes
 
-        result = run_differential_evolution(energy_evaluation, config=config)
+        result = run_differential_evolution(energy_evaluation, config=config, num_qubits=num_qubits)
         optimal_parameters = np.asarray(result.x, dtype=float)
         optimal_value = float(result.fun)
 
@@ -104,8 +122,11 @@ class PortfolioVQESolver:
             optimal_parameters=optimal_parameters,
             optimal_value=optimal_value,
             history=history,
+            best_history=best_history,
             num_evaluations=len(history),
             ansatz_report=report,
+            converged=bool(getattr(result, "success", False)),
+            optimizer_message=str(getattr(result, "message", "")),
         )
 
     @staticmethod

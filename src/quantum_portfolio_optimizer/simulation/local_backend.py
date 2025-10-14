@@ -27,6 +27,9 @@ def get_default_estimator(
     noise_model: Any = None,
     backend_options: Optional[Dict[str, Any]] = None,
     seed: Optional[int] = None,
+    max_parallel_threads: Optional[int] = None,
+    max_parallel_experiments: Optional[int] = None,
+    max_memory_mb: Optional[int] = None,
 ) -> object:
     """Return an estimator suitable for local simulation."""
     if ReferenceEstimator is not None and shots is None and noise_model is None:
@@ -39,14 +42,31 @@ def get_default_estimator(
             run_options["shots"] = shots
         if seed is not None:
             run_options["seed_simulator"] = seed
-        estimator = AerEstimator(
-            run_options=run_options or None,
-            backend_options=backend_options or None,
-        )
+        backend_cfg: Dict[str, Any] = dict(backend_options or {})
+        if max_parallel_threads is not None:
+            backend_cfg.setdefault("max_parallel_threads", max_parallel_threads)
+        if max_parallel_experiments is not None:
+            backend_cfg.setdefault("max_parallel_experiments", max_parallel_experiments)
+        if max_memory_mb is not None:
+            backend_cfg.setdefault("max_memory_mb", max_memory_mb)
+        extra: Dict[str, Any] = {}
         if noise_model is not None:
-            logger.warning("Noise models are not supported by AerEstimator via this helper; ignoring supplied model.")
-        logger.debug("Using AerEstimator with options: %s", run_options)
-        return estimator
+            extra["noise_model"] = noise_model
+        try:
+            estimator = AerEstimator(
+                run_options=run_options or None,
+                backend_options=backend_cfg or None,
+                **extra,
+            )
+            logger.debug("Using AerEstimator with options: %s and backend options: %s", run_options, backend_cfg)
+            if noise_model is not None:
+                logger.info("AerEstimator configured with noise model: %s", noise_model)
+            return estimator
+        except TypeError:
+            if noise_model is not None:
+                logger.warning("AerEstimator does not support noise_model with current configuration; falling back to noiseless statevector.")
+            else:
+                logger.warning("Failed to initialise AerEstimator; falling back to statevector estimator.")
 
     if ReferenceEstimator is not None:
         logger.warning("qiskit_aer not available or unsupported configuration; using StatevectorEstimator.")
@@ -60,6 +80,9 @@ def get_default_sampler(
     noise_model: Any = None,
     backend_options: Optional[Dict[str, Any]] = None,
     seed: Optional[int] = None,
+    max_parallel_threads: Optional[int] = None,
+    max_parallel_experiments: Optional[int] = None,
+    max_memory_mb: Optional[int] = None,
 ) -> object:
     if ReferenceSampler is not None and noise_model is None:
         logger.debug("Using StatevectorSampler for noiseless sampling.")
@@ -69,14 +92,31 @@ def get_default_sampler(
         run_options: Dict[str, Any] = {"shots": shots}
         if seed is not None:
             run_options["seed"] = seed
-        sampler = AerSampler(
-            run_options=run_options,
-            backend_options=backend_options or None,
-        )
+        backend_cfg: Dict[str, Any] = dict(backend_options or {})
+        if max_parallel_threads is not None:
+            backend_cfg.setdefault("max_parallel_threads", max_parallel_threads)
+        if max_parallel_experiments is not None:
+            backend_cfg.setdefault("max_parallel_experiments", max_parallel_experiments)
+        if max_memory_mb is not None:
+            backend_cfg.setdefault("max_memory_mb", max_memory_mb)
+        extra: Dict[str, Any] = {}
         if noise_model is not None:
-            logger.warning("Noise models are not supported by AerSampler via this helper; ignoring supplied model.")
-        logger.debug("Using AerSampler with shots=%s", shots)
-        return sampler
+            extra["noise_model"] = noise_model
+        try:
+            sampler = AerSampler(
+                run_options=run_options,
+                backend_options=backend_cfg or None,
+                **extra,
+            )
+            logger.debug("Using AerSampler with shots=%s and backend options: %s", shots, backend_cfg)
+            if noise_model is not None:
+                logger.info("AerSampler configured with noise model.")
+            return sampler
+        except TypeError:
+            if noise_model is not None:
+                logger.warning("AerSampler does not support noise_model with current configuration; falling back to noiseless sampler.")
+            else:
+                logger.warning("Failed to initialise AerSampler; falling back to statevector sampler.")
 
     if ReferenceSampler is not None:
         logger.warning("qiskit_aer not available or unsupported configuration; using StatevectorSampler.")

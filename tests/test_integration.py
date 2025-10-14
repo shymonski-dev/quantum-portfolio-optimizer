@@ -28,3 +28,5 @@ def test_end_to_end_pipeline():
     result = solver.solve(qubo)
 
     assert result.optimal_value < 5.0
+    assert len(result.best_history) == result.num_evaluations
+    assert result.converged in {True, False}

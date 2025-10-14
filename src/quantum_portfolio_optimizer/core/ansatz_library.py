@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Sequence
+from typing import Callable, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 from qiskit import QuantumCircuit
@@ -12,8 +12,8 @@ from qiskit.circuit.library import EfficientSU2, RealAmplitudes
 
 def build_real_amplitudes(
     num_qubits: int,
-    reps: int = 2,
-    entanglement: str | Sequence[Sequence[int]] = "full",
+    reps: int = 3,  # 3 layers as per paper
+    entanglement: str | Sequence[Sequence[int]] = "reverse_linear",  # Reverse linear from paper
     insert_barriers: bool = False,
 ) -> RealAmplitudes:
     return RealAmplitudes(num_qubits=num_qubits, reps=reps, entanglement=entanglement, insert_barriers=insert_barriers)
@@ -53,6 +53,7 @@ def initialise_parameters(
     circuit: QuantumCircuit,
     strategy: str = "zeros",
     seed: Optional[int] = None,
+    scale: float = 1.0,
 ) -> np.ndarray:
     """Generate an initial parameter vector for a given ansatz.
 
@@ -64,6 +65,8 @@ def initialise_parameters(
         'zeros' (default), 'uniform', or 'normal'.
     seed:
         Optional RNG seed for reproducibility.
+    scale:
+        Optional scaling factor applied to random initialisations.
     """
     rng = np.random.default_rng(seed)
     num_params = circuit.num_parameters
@@ -71,9 +74,11 @@ def initialise_parameters(
     if strategy == "zeros":
         return np.zeros(num_params, dtype=float)
     if strategy == "uniform":
-        return rng.uniform(-np.pi, np.pi, size=num_params)
+        return rng.uniform(-np.pi, np.pi, size=num_params) * scale
+    if strategy == "uniform_small":
+        return rng.uniform(-0.2, 0.2, size=num_params) * scale
     if strategy == "normal":
-        return rng.normal(0.0, 0.2, size=num_params)
+        return rng.normal(0.0, 0.2, size=num_params) * scale
     raise ValueError(f"Unknown initialisation strategy '{strategy}'.")
 
 
@@ -101,3 +106,47 @@ def analyse_circuit(circuit: QuantumCircuit, name: Optional[str] = None) -> Ansa
 
 def compare_ansatze(ansatze: Iterable[QuantumCircuit]) -> List[AnsatzReport]:
     return [analyse_circuit(ansatz) for ansatz in ansatze]
+
+
+def generate_ansatz_family(
+    num_qubits: int,
+    include_real: bool = True,
+    include_cyclic: bool = True,
+    include_efficient: bool = False,
+    real_configs: Optional[Sequence[Tuple[int, str]]] = None,
+) -> List[QuantumCircuit]:
+    circuits: List[QuantumCircuit] = []
+    if include_real:
+        configs = real_configs or [(2, "reverse_linear"), (3, "reverse_linear"), (2, "full")]
+        for reps, ent in configs:
+            circuits.append(build_real_amplitudes(num_qubits=num_qubits, reps=reps, entanglement=ent))
+    if include_cyclic:
+        circuits.append(build_cyclic_ansatz(num_qubits=num_qubits, reps=2))
+    if include_efficient:
+        circuits.append(build_efficient_su2(num_qubits=num_qubits, reps=2, entanglement="linear"))
+    return circuits
+
+
+def evaluate_initialisations(
+    circuit: QuantumCircuit,
+    strategies: Sequence[str],
+    sample_count: int = 32,
+    seed: Optional[int] = None,
+    scale: float = 1.0,
+) -> dict:
+    """Evaluate summary statistics for different parameter initialisation strategies."""
+    rng = np.random.default_rng(seed)
+    results = {}
+    for strategy in strategies:
+        samples = []
+        for _ in range(sample_count):
+            strat_seed = int(rng.integers(0, 1 << 32))
+            params = initialise_parameters(circuit, strategy=strategy, seed=strat_seed, scale=scale)
+            samples.append(params)
+        stacked = np.vstack(samples)
+        results[strategy] = {
+            "mean": np.mean(stacked, axis=0),
+            "std": np.std(stacked, axis=0),
+            "norm": np.linalg.norm(stacked, axis=1).mean(),
+        }
+    return results

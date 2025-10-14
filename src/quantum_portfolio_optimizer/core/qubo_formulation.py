@@ -116,12 +116,12 @@ class PortfolioQUBO:
         expected_returns: Iterable[Iterable[float]] | Iterable[float],
         covariance: Iterable[Iterable[float]],
         budget: float,
-        risk_aversion: float = 0.5,
-        transaction_cost: float = 0.0,
+        risk_aversion: float = 1000,  # γ parameter from paper
+        transaction_cost: float = 0.01,  # ν parameter from paper
         time_steps: int = 1,
         resolution_qubits: int = 1,
         max_investment: float = 1.0,
-        penalty_strength: float = 50.0,
+        penalty_strength: float = 1.0,  # ρ parameter from paper
         enforce_budget: bool = True,
         time_step_budgets: Optional[Iterable[float]] = None,
         time_budget_penalty: Optional[float] = None,
@@ -226,6 +226,20 @@ class PortfolioQUBO:
             raise ValueError("expected_returns must be 1-D or 2-D")
         return returns
 
+    @staticmethod
+    def calculate_lambda_parameter(K: int, K_prime: int) -> float:
+        """Calculate λ for transaction cost approximation as per paper Eq. 14.
+
+        Parameters:
+            K: Number of discretization levels (2^Nr)
+            K_prime: Modified discretization parameter
+
+        Returns:
+            λ parameter for transaction cost calculation
+        """
+        import math
+        return math.sqrt(3) * K / (2 * K_prime)
+
     def _weights_for_asset(self, asset: int) -> List[Tuple[int, float]]:
         """Allocation contributions for all variables that belong to a given asset."""
         return [(idx, self._variable_weights[idx]) for idx in self._asset_indices.get(asset, [])]
@@ -309,7 +323,8 @@ class PortfolioQUBO:
 
         # Transaction cost penalty encourages smooth allocation across time.
         if self.transaction_cost > 0 and self.time_steps > 1:
-            lambda_tc = self.transaction_cost
+            lambda_factor = self.calculate_lambda_parameter(self._levels, max(1, self._levels - 1))
+            lambda_tc = self.transaction_cost * lambda_factor
             for asset in range(self.num_assets):
                 prev_vars: List[Tuple[int, float]] = []
                 for t_step in range(self.time_steps):

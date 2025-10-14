@@ -1,8 +1,10 @@
-"""Placeholder script for future performance benchmarking."""
+"""CLI entry point for Phase II benchmarking."""
+
+from quantum_portfolio_optimizer.benchmarks.phase2 import run_phase2_benchmark
 
 
 def main() -> None:
-    print("Performance analysis will be available in Phase 3.")
+    run_phase2_benchmark()
 
 
 if __name__ == "__main__":

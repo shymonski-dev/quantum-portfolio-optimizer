@@ -14,6 +14,12 @@ def main() -> None:
     mu = dataset.returns.mean().values
     covariance = np.cov(dataset.returns.values.T)
 
+    progress_snapshots: list[tuple[int, float, float]] = []
+
+    def progress_callback(evaluation: int, energy: float, best_so_far: float) -> None:
+        if evaluation % 100 == 0:
+            progress_snapshots.append((evaluation, energy, best_so_far))
+
     builder = PortfolioQUBO(
         expected_returns=mu,
         covariance=covariance,
@@ -25,12 +31,14 @@ def main() -> None:
         penalty_strength=25.0,
     )
     qubo = builder.build()
-    solver = PortfolioVQESolver(seed=123, shots=None)
+    solver = PortfolioVQESolver(seed=123, shots=None, progress_callback=progress_callback)
     result = solver.solve(qubo)
 
     print("Optimal energy:", result.optimal_value)
     print("Number of evaluations:", result.num_evaluations)
+    print("Converged:", result.converged, "-", result.optimizer_message)
     print("Ansatz report:", result.ansatz_report)
+    print("Tracked progress (every 100 evaluations):", progress_snapshots[:5])
 
     best_bitstring = None
     if result.history:
