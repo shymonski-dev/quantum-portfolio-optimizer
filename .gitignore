@@ -17,3 +17,4 @@ venv/
 # Local caches
 tmp/
 .DS_Store
+.benchmark_cache/

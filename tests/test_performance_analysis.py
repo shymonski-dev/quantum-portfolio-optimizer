@@ -12,21 +12,34 @@ def small_optimizer_config(num_qubits: int) -> DifferentialEvolutionConfig:
     return DifferentialEvolutionConfig(bounds=bounds, maxiter=3, popsize=4, seed=1)
 
 
-def test_benchmark_ansatze_returns_results():
+def test_benchmark_ansatze_returns_results(tmp_path):
     qubo = build_phase2_qubo(num_assets=2, num_steps=1, seed=3)
     configs = [("real_amplitudes", {"reps": 1, "entanglement": "reverse_linear"})]
-    results = benchmark_ansatze(qubo, configs, small_optimizer_config, shots=None)
+    results = benchmark_ansatze(qubo, configs, small_optimizer_config, shots=None, cache_dir=tmp_path)
     assert results, "Benchmark should return at least one result"
     first = results[0]
     assert isinstance(first, BenchmarkResult)
     assert first.evaluations > 0
+    assert first.cache_metadata is not None
 
 
-def test_evaluate_noise_levels_runs():
+def test_cache_reuse(tmp_path):
+    qubo = build_phase2_qubo(num_assets=2, num_steps=1, seed=5)
+    configs = [("real_amplitudes", {"reps": 1, "entanglement": "reverse_linear"})]
+    results_first = benchmark_ansatze(qubo, configs, small_optimizer_config, shots=None, cache_dir=tmp_path)
+    assert results_first
+    assert results_first[0].cache_metadata is not None
+    # Second run should hit cache and run quickly; just ensure result content matches and evaluations unchanged.
+    results_second = benchmark_ansatze(qubo, configs, small_optimizer_config, shots=None, cache_dir=tmp_path)
+    assert results_second[0].evaluations == results_first[0].evaluations
+    assert results_second[0].cache_metadata is not None
+
+
+def test_evaluate_noise_levels_runs(tmp_path):
     qubo = build_phase2_qubo(num_assets=2, num_steps=1, seed=4)
     problem = qubo.build()
     configs = [("real_amplitudes", {"reps": 1, "entanglement": "reverse_linear"})]
-    result = benchmark_ansatze(qubo, configs, small_optimizer_config, shots=None)[0]
+    result = benchmark_ansatze(qubo, configs, small_optimizer_config, shots=None, cache_dir=tmp_path)[0]
     noise_results = evaluate_noise_levels(
         problem,
         result.ansatz_name,

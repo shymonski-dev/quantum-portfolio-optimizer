@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import statistics
-from dataclasses import dataclass
-from typing import Callable, Dict, Iterable, List, Tuple
+from dataclasses import asdict, dataclass
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 
@@ -20,6 +20,8 @@ from ..core.vqe_solver import PortfolioVQESolver
 from ..data.sample_datasets import generate_synthetic_dataset
 from ..simulation.local_backend import get_default_estimator, get_default_sampler
 from ..simulation.noise_models import simple_depolarising_noise
+from ..utils.hashing import deterministic_hash
+from ..utils.json_cache import read_json_cache, write_json_cache
 
 
 @dataclass
@@ -33,6 +35,7 @@ class BenchmarkResult:
     history: List[float]
     optimal_parameters: np.ndarray
     ansatz_options: Dict
+    cache_metadata: Optional[Dict[str, str]] = None
 
 
 def build_phase2_qubo(num_assets: int = 3, num_steps: int = 2, seed: int = 42) -> PortfolioQUBO:
@@ -56,37 +59,99 @@ def benchmark_ansatze(
     ansatz_configs: Iterable[Tuple[str, Dict]],
     optimizer_factory: Callable[[int], DifferentialEvolutionConfig],
     shots: int | None = None,
+    cache_dir: Optional[Path] = None,
+    use_cache: bool = True,
 ) -> List[BenchmarkResult]:
     results: List[BenchmarkResult] = []
     problem = qubo.build()
     num_qubits = problem.num_variables
+    qubo_signature = deterministic_hash(
+        {
+            "linear": problem.linear.round(12).tolist(),
+            "quadratic": problem.quadratic.round(12).tolist(),
+            "offset": round(problem.offset, 12),
+        }
+    )
     estimator = get_default_estimator(shots=shots)
 
     for name, options in ansatz_configs:
+        opt_config = optimizer_factory(num_qubits)
+        cache_key = None
+        cache_metadata: Optional[Dict[str, str]] = None
+        if use_cache and cache_dir is not None:
+            payload = {
+                "qubo": qubo_signature,
+                "ansatz_name": name,
+                "ansatz_options": options,
+                "optimizer": asdict(opt_config),
+                "shots": shots,
+            }
+            cache_key = deterministic_hash(payload)
+            cached = read_json_cache(cache_dir, cache_key)
+            if cached is not None:
+                cache_metadata = cached.get("metadata")
+                results.append(
+                    BenchmarkResult(
+                        ansatz_name=cached["ansatz_name"],
+                        reps=cached["reps"],
+                        entanglement=cached["entanglement"],
+                        optimal_value=cached["optimal_value"],
+                        evaluations=cached["evaluations"],
+                        converged=cached["converged"],
+                        history=cached["history"],
+                        optimal_parameters=np.asarray(cached["optimal_parameters"]),
+                        ansatz_options=cached["ansatz_options"],
+                        cache_metadata=cache_metadata,
+                    )
+                )
+                if cache_metadata:
+                    print(
+                        f"[cache hit] {name} -> {cache_metadata.get('source', 'n/a')} "
+                        f"@ {cache_metadata.get('timestamp', 'unknown')}"
+                    )
+                continue
+
         solver = PortfolioVQESolver(
             estimator=estimator,
             ansatz_name=name,
             ansatz_options=options,
             parameter_bounds=2 * np.pi,
-            optimizer_config=optimizer_factory(num_qubits),
+            optimizer_config=opt_config,
             seed=123,
         )
         vqe_result = solver.solve(problem)
         ansatz = get_ansatz(name, num_qubits=num_qubits, **options)
         report = analyse_circuit(ansatz)
-        results.append(
-            BenchmarkResult(
-                ansatz_name=name,
-                reps=options.get("reps", report.depth),
-                entanglement=options.get("entanglement", "reverse_linear"),
-                optimal_value=vqe_result.optimal_value,
-                evaluations=vqe_result.num_evaluations,
-                converged=vqe_result.converged,
-                history=vqe_result.history,
-                optimal_parameters=vqe_result.optimal_parameters,
-                ansatz_options=dict(options),
-            )
+        benchmark_entry = BenchmarkResult(
+            ansatz_name=name,
+            reps=options.get("reps", report.depth),
+            entanglement=options.get("entanglement", "reverse_linear"),
+            optimal_value=vqe_result.optimal_value,
+            evaluations=vqe_result.num_evaluations,
+            converged=vqe_result.converged,
+            history=vqe_result.history,
+            optimal_parameters=vqe_result.optimal_parameters,
+            ansatz_options=dict(options),
+            cache_metadata=None,
         )
+        results.append(benchmark_entry)
+        if cache_dir is not None and cache_key is not None:
+            metadata = write_json_cache(
+                cache_dir,
+                cache_key,
+                {
+                    "ansatz_name": benchmark_entry.ansatz_name,
+                    "reps": benchmark_entry.reps,
+                    "entanglement": benchmark_entry.entanglement,
+                    "optimal_value": benchmark_entry.optimal_value,
+                    "evaluations": benchmark_entry.evaluations,
+                    "converged": benchmark_entry.converged,
+                    "history": benchmark_entry.history,
+                    "optimal_parameters": benchmark_entry.optimal_parameters.tolist(),
+                    "ansatz_options": benchmark_entry.ansatz_options,
+                },
+            )
+            benchmark_entry.cache_metadata = metadata
     return results
 
 
@@ -105,9 +170,16 @@ def summarize_results(results: List[BenchmarkResult]) -> None:
     print("Ansatz Benchmark Summary")
     for res in results:
         best = min(res.history) if res.history else float("nan")
+        cache_note = ""
+        if res.cache_metadata:
+            cache_note = (
+                f" [cached {res.cache_metadata.get('timestamp', 'unknown')}"
+                f" @ {res.cache_metadata.get('source', 'n/a')}]"
+            )
         print(
             f"{res.ansatz_name:15s} reps={res.reps:<2} ent={res.entanglement:15s} "
-            f"opt={res.optimal_value: .4f} best={best: .4f} evals={res.evaluations:<4} converged={res.converged}"
+            f"opt={res.optimal_value: .4f} best={best: .4f} evals={res.evaluations:<4} "
+            f"converged={res.converged}{cache_note}"
         )
 
     opt_values = [res.optimal_value for res in results]
@@ -165,7 +237,7 @@ def evaluate_noise_levels(
     return results
 
 
-def run_phase2_benchmark() -> None:
+def run_phase2_benchmark(cache_dir: Optional[Path] = None, use_cache: bool = True) -> None:
     qubo_builder = build_phase2_qubo()
     configs = [
         ("real_amplitudes", {"reps": 2, "entanglement": "reverse_linear"}),
@@ -173,7 +245,9 @@ def run_phase2_benchmark() -> None:
         ("real_amplitudes", {"reps": 2, "entanglement": "full"}),
         ("cyclic", {"reps": 2}),
     ]
-    results = benchmark_ansatze(qubo_builder, configs, make_optimizer_config)
+    if cache_dir is None:
+        cache_dir = Path(".benchmark_cache")
+    results = benchmark_ansatze(qubo_builder, configs, make_optimizer_config, cache_dir=cache_dir, use_cache=use_cache)
     summarize_results(results)
 
     init_summary = analyse_initialisations(num_qubits=qubo_builder.build().num_variables)
