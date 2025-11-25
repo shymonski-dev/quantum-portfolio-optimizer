@@ -14,6 +14,13 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import numpy as np
 from qiskit.quantum_info import SparsePauliOp
 
+from quantum_portfolio_optimizer.exceptions import (
+    InvalidBudgetError,
+    InvalidCovarianceError,
+    InvalidParameterError,
+    QUBOError,
+)
+
 
 @dataclass
 class QUBOProblem:
@@ -29,11 +36,11 @@ class QUBOProblem:
         self.linear = np.asarray(self.linear, dtype=float)
         self.quadratic = np.asarray(self.quadratic, dtype=float)
         if self.linear.ndim != 1:
-            raise ValueError("linear coefficients must be a 1-D array")
+            raise QUBOError("linear coefficients must be a 1-D array")
         if self.quadratic.shape != (self.linear.size, self.linear.size):
-            raise ValueError("quadratic matrix must be square with size matching linear terms")
+            raise QUBOError("quadratic matrix must be square with size matching linear terms")
         if not np.allclose(self.quadratic, self.quadratic.T, atol=1e-9):
-            raise ValueError("quadratic matrix must be symmetric")
+            raise QUBOError("quadratic matrix must be symmetric")
 
     @property
     def num_variables(self) -> int:
@@ -107,6 +114,79 @@ class QUBOProblem:
 
         return SparsePauliOp(labels, coeffs)
 
+    def decode_bitstring(self, bitstring: str) -> Dict[str, Any]:
+        """Decode a measurement bitstring into portfolio allocations.
+
+        This method handles multi-qubit resolution encoding where each asset
+        may be encoded using multiple qubits for finer allocation granularity.
+
+        For resolution_qubits=1: Binary allocation (0 or max_investment/time_steps)
+        For resolution_qubits=2: 4 levels (0, 1/3, 2/3, 1) * scale
+        For resolution_qubits=N: 2^N levels with binary encoding
+
+        Args:
+            bitstring: Binary string from quantum measurement (e.g., "0110").
+                       Qiskit uses little-endian (rightmost = qubit 0).
+
+        Returns:
+            Dictionary with:
+                - allocations: 2D array [time_step, asset] of continuous allocations
+                - binary_values: Raw binary values per (asset, time_step)
+                - total_allocation: Sum of all allocations
+                - allocation_per_asset: Total allocation per asset across time steps
+        """
+        if len(bitstring) != self.num_variables:
+            raise QUBOError(
+                f"Bitstring length {len(bitstring)} does not match "
+                f"num_variables {self.num_variables}"
+            )
+
+        # Parse metadata
+        num_assets = self.metadata.get("num_assets", 1)
+        time_steps = self.metadata.get("time_steps", 1)
+        resolution_qubits = self.metadata.get("resolution_qubits", 1)
+        normalisation = self.metadata.get("normalisation", 1.0)
+        bit_weights = self.metadata.get("bit_weights", [1.0])
+
+        # Convert bitstring to binary array (Qiskit little-endian: reverse)
+        binary_array = np.array([int(b) for b in bitstring[::-1]], dtype=int)
+
+        # Initialize output arrays
+        allocations = np.zeros((time_steps, num_assets), dtype=float)
+        binary_values: Dict[Tuple[int, int], int] = {}
+
+        # Decode each (asset, time_step) group
+        for idx, (asset, t_step, bit) in enumerate(self.variable_order):
+            if binary_array[idx] == 1:
+                # Add weighted contribution from this bit
+                weight = bit_weights[bit] if bit < len(bit_weights) else 2**bit
+                allocations[t_step, asset] += normalisation * weight
+
+        # Also compute the integer binary values for each (asset, time_step)
+        for asset in range(num_assets):
+            for t_step in range(time_steps):
+                binary_val = 0
+                for idx, (a, t, bit) in enumerate(self.variable_order):
+                    if a == asset and t == t_step and binary_array[idx] == 1:
+                        binary_val += 2**bit
+                binary_values[(asset, t_step)] = binary_val
+
+        # Compute summary statistics
+        total_allocation = float(allocations.sum())
+        allocation_per_asset = allocations.sum(axis=0).tolist()
+        allocation_per_time = allocations.sum(axis=1).tolist()
+
+        return {
+            "allocations": allocations,
+            "binary_values": binary_values,
+            "total_allocation": total_allocation,
+            "allocation_per_asset": allocation_per_asset,
+            "allocation_per_time": allocation_per_time,
+            "num_assets": num_assets,
+            "time_steps": time_steps,
+            "resolution_qubits": resolution_qubits,
+        }
+
 
 class PortfolioQUBO:
     """Builds a QUBO representation for discretised portfolio optimisation."""
@@ -142,25 +222,28 @@ class PortfolioQUBO:
         self.budget = float(budget)
 
         if self.time_steps < 1:
-            raise ValueError("time_steps must be >= 1")
+            raise InvalidParameterError("time_steps", self.time_steps, "must be >= 1")
         if self.resolution_qubits < 1:
-            raise ValueError("resolution_qubits must be >= 1 in Phase 1")
+            raise InvalidParameterError("resolution_qubits", self.resolution_qubits, "must be >= 1")
         if self.max_investment <= 0:
-            raise ValueError("max_investment must be positive")
+            raise InvalidParameterError("max_investment", self.max_investment, "must be positive")
         if self.budget <= 0:
-            raise ValueError("budget must be positive")
+            raise InvalidBudgetError(self.budget, "must be positive")
 
         self.expected_returns = self._normalise_returns(expected_returns, self.time_steps)
         self.covariance = np.asarray(covariance, dtype=float)
         if self.covariance.ndim != 2 or self.covariance.shape[0] != self.covariance.shape[1]:
-            raise ValueError("covariance must be a square matrix")
+            raise InvalidCovarianceError("must be a square matrix", shape=self.covariance.shape)
 
         self.num_assets = self.covariance.shape[0]
         if self.expected_returns.shape[1] != self.num_assets:
-            raise ValueError("expected_returns second dimension must match covariance")
+            raise InvalidCovarianceError(
+                "dimensions must match expected_returns",
+                shape=self.covariance.shape
+            )
 
         if not np.allclose(self.covariance, self.covariance.T, atol=1e-8):
-            raise ValueError("covariance matrix must be symmetric")
+            raise InvalidCovarianceError("must be symmetric", shape=self.covariance.shape)
 
         self._bit_weights = np.array([2**b for b in range(self.resolution_qubits)], dtype=float)
         self._levels = 2**self.resolution_qubits
@@ -190,11 +273,20 @@ class PortfolioQUBO:
         if time_step_budgets is not None:
             time_budget_array = np.asarray(list(time_step_budgets), dtype=float)
             if time_budget_array.shape != (self.time_steps,):
-                raise ValueError("time_step_budgets must have length equal to time_steps")
+                raise InvalidParameterError(
+                    "time_step_budgets", time_budget_array.tolist(),
+                    f"must have length equal to time_steps ({self.time_steps})"
+                )
             if np.any(time_budget_array <= 0):
-                raise ValueError("time_step_budgets entries must be positive")
+                raise InvalidParameterError(
+                    "time_step_budgets", time_budget_array.tolist(),
+                    "entries must be positive"
+                )
             if np.any(time_budget_array > self.max_investment):
-                raise ValueError("time_step_budgets cannot exceed max_investment")
+                raise InvalidParameterError(
+                    "time_step_budgets", time_budget_array.tolist(),
+                    f"cannot exceed max_investment ({self.max_investment})"
+                )
             self.time_step_budgets = time_budget_array
         else:
             self.time_step_budgets = None
@@ -203,11 +295,20 @@ class PortfolioQUBO:
         if asset_max_allocation is not None:
             asset_array = np.asarray(list(asset_max_allocation), dtype=float)
             if asset_array.shape != (self.num_assets,):
-                raise ValueError("asset_max_allocation must match number of assets")
+                raise InvalidParameterError(
+                    "asset_max_allocation", asset_array.tolist(),
+                    f"must match number of assets ({self.num_assets})"
+                )
             if np.any(asset_array <= 0):
-                raise ValueError("asset_max_allocation entries must be positive")
+                raise InvalidParameterError(
+                    "asset_max_allocation", asset_array.tolist(),
+                    "entries must be positive"
+                )
             if np.any(asset_array > self.max_investment):
-                raise ValueError("asset_max_allocation cannot exceed max_investment")
+                raise InvalidParameterError(
+                    "asset_max_allocation", asset_array.tolist(),
+                    f"cannot exceed max_investment ({self.max_investment})"
+                )
             self.asset_max_allocation = asset_array
         else:
             self.asset_max_allocation = None
@@ -221,9 +322,15 @@ class PortfolioQUBO:
             returns = np.tile(returns, (time_steps, 1))
         elif returns.ndim == 2:
             if returns.shape[0] != time_steps:
-                raise ValueError("When providing a matrix, expected_returns.shape[0] must equal time_steps")
+                raise InvalidParameterError(
+                    "expected_returns", returns.shape,
+                    f"shape[0] must equal time_steps ({time_steps})"
+                )
         else:
-            raise ValueError("expected_returns must be 1-D or 2-D")
+            raise InvalidParameterError(
+                "expected_returns", returns.ndim,
+                "must be 1-D or 2-D array"
+            )
         return returns
 
     @staticmethod

@@ -12,11 +12,55 @@ from quantum_portfolio_optimizer.core.vqe_solver import PortfolioVQESolver
 from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
 from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
 from quantum_portfolio_optimizer.simulation.provider import get_provider
+from quantum_portfolio_optimizer.benchmarks.classical_baseline import markowitz_baseline
+from quantum_portfolio_optimizer.postprocessing.quality_scorer import score_solution
+from quantum_portfolio_optimizer.core.warm_start import (
+    warm_start_vqe, warm_start_qaoa, WarmStartConfig
+)
+from qiskit.circuit.library import RealAmplitudes, EfficientSU2
+from quantum_portfolio_optimizer.exceptions import (
+    QuantumPortfolioError,
+    DataError,
+    QUBOError,
+    OptimizationError,
+    BackendError,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# Error message guidance for common issues
+ERROR_GUIDANCE = {
+    'No data': "Could not retrieve stock data. Verify ticker symbols are correct and the date range contains trading days.",
+    'yfinance': "Market data service error. Check your internet connection and try again.",
+    'Invalid ticker': "One or more ticker symbols are invalid. Use standard formats like AAPL, MSFT, BRK.B.",
+    'date': "Invalid date range. Ensure start date is before end date and end date is not in the future.",
+    'QUBO': "Problem formulation failed. Try reducing the number of assets or adjusting risk parameters.",
+    'IBM': "IBM Quantum connection issue. Verify your API key and CRN are correct.",
+    'authentication': "Authentication failed. Check your IBM Quantum credentials.",
+    'converge': "Optimization may need more iterations. Try increasing the Max Iterations setting.",
+    'timeout': "Request timed out. Try using the local simulator or reducing problem size.",
+    'Insufficient data': "Not enough historical data. Try extending the date range or using fewer assets.",
+}
+
+
+def classify_error(error_msg: str) -> dict:
+    """Classify error and return user-friendly guidance."""
+    error_str = str(error_msg).lower()
+    for key, guidance in ERROR_GUIDANCE.items():
+        if key.lower() in error_str:
+            return {
+                'message': guidance,
+                'technical': str(error_msg),
+                'type': key
+            }
+    return {
+        'message': str(error_msg),
+        'technical': str(error_msg),
+        'type': 'unknown'
+    }
 
 
 @app.route('/')
@@ -41,6 +85,8 @@ def optimize():
         maxiter = int(data.get('maxiter', 50))
         algorithm = data.get('algorithm', 'vqe')
         qaoa_layers = int(data.get('qaoa_layers', 1))
+        use_warm_start = data.get('warm_start', True)  # Default enabled
+        resolution_qubits = int(data.get('resolution_qubits', 1))  # Default binary
 
         logger.info(f"Starting optimization: {tickers}, {start_date} to {end_date}")
         logger.info(f"Settings: algorithm={algorithm}, risk={risk_factor}, backend={backend_type}")
@@ -57,8 +103,8 @@ def optimize():
 
         # Calculate returns using logarithmic returns (as per research paper)
         log_returns = calculate_logarithmic_returns(stock_data)
-        mean_returns = log_returns.mean().values
-        cov_matrix = log_returns.cov().values
+        mean_returns = np.mean(log_returns, axis=0)
+        cov_matrix = np.cov(log_returns, rowvar=False)
         num_assets = len(tickers)
 
         # Scale risk aversion based on slider (0-1) -> (100-10000)
@@ -73,12 +119,14 @@ def optimize():
             risk_aversion=risk_aversion,
             transaction_cost=0.0,  # Single period, no transaction cost
             time_steps=1,
-            resolution_qubits=1,  # Binary allocation (in/out)
+            resolution_qubits=resolution_qubits,  # Configurable allocation precision
             max_investment=1.0,
             penalty_strength=1000.0,
             enforce_budget=True,
         )
         qubo = qubo_builder.build()
+        total_qubits = num_assets * resolution_qubits
+        logger.info(f"QUBO built: {num_assets} assets x {resolution_qubits} resolution = {total_qubits} qubits")
 
         # Get backend
         if backend_type == "ibm_quantum":
@@ -120,6 +168,40 @@ def optimize():
             progress_data['iteration'] = iteration
             progress_data['best_energy'] = best_energy
 
+        # Compute warm start initial parameters if enabled
+        warm_start_result = None
+        initial_point = None
+        if use_warm_start:
+            try:
+                warm_config = WarmStartConfig(seed=42)
+                if algorithm == 'qaoa':
+                    warm_start_result = warm_start_qaoa(
+                        qubo_linear=qubo.linear,
+                        qubo_quadratic=qubo.quadratic,
+                        layers=qaoa_layers,
+                        expected_returns=mean_returns,
+                        covariance=cov_matrix,
+                        config=warm_config,
+                    )
+                    initial_point = warm_start_result.initial_parameters.tolist()
+                    logger.info(f"Warm start (QAOA): estimated {warm_start_result.estimated_improvement:.1f}x improvement")
+                else:  # VQE
+                    # Build ansatz for warm start
+                    ansatz_class = RealAmplitudes if ansatz_type == 'real_amplitudes' else EfficientSU2
+                    temp_ansatz = ansatz_class(num_assets, reps=reps)
+                    warm_start_result = warm_start_vqe(
+                        expected_returns=mean_returns,
+                        covariance=cov_matrix,
+                        ansatz=temp_ansatz,
+                        config=warm_config,
+                    )
+                    initial_point = warm_start_result.initial_parameters.tolist()
+                    logger.info(f"Warm start (VQE): estimated {warm_start_result.estimated_improvement:.1f}x improvement")
+            except Exception as e:
+                logger.warning(f"Warm start failed, using random initialization: {e}")
+                warm_start_result = None
+                initial_point = None
+
         # Select and run the appropriate solver
         if algorithm == 'qaoa':
             # QAOA: Configure bounds for gamma and beta parameters
@@ -132,6 +214,7 @@ def optimize():
                 bounds=bounds,
                 maxiter=maxiter,
                 seed=42,
+                x0=initial_point,  # Warm start initial point
             )
 
             solver = PortfolioQAOASolver(
@@ -151,6 +234,7 @@ def optimize():
                 bounds=bounds,
                 maxiter=maxiter,
                 seed=42,
+                x0=initial_point,  # Warm start initial point
             )
 
             solver = PortfolioVQESolver(
@@ -167,18 +251,25 @@ def optimize():
 
         result = solver.solve(qubo)
 
-        # Interpret binary solution
-        # The optimal parameters need to be converted to a binary decision
-        # For simplicity, we'll use the energy landscape to determine selection
-        binary_solution = _extract_binary_solution(result, num_assets)
-        selected_assets = [tickers[i] for i, b in enumerate(binary_solution) if b == 1]
-
-        # Calculate portfolio metrics
-        if len(selected_assets) > 0:
-            weights = [1.0 / len(selected_assets) if b == 1 else 0.0 for b in binary_solution]
+        # Interpret solution using decode_bitstring for multi-qubit resolution
+        if result.best_bitstring:
+            decoded = qubo.decode_bitstring(result.best_bitstring)
+            weights = decoded['allocation_per_asset']  # Already a list
+            # Normalize to sum to 1
+            total = sum(weights)
+            if total > 0:
+                weights = [w / total for w in weights]
+            else:
+                weights = [1.0 / num_assets] * num_assets
         else:
-            weights = [1.0 / num_assets] * num_assets  # Fallback to equal weight
+            # Fallback to equal weight if no bitstring
+            weights = [1.0 / num_assets] * num_assets
+
+        # Identify selected assets (non-zero allocation)
+        selected_assets = [tickers[i] for i, w in enumerate(weights) if w > 0.001]
+        if not selected_assets:
             selected_assets = tickers
+            weights = [1.0 / num_assets] * num_assets
 
         expected_return = sum(w * r for w, r in zip(weights, mean_returns)) * 252  # Annualized
         portfolio_variance = sum(
@@ -189,13 +280,41 @@ def optimize():
         portfolio_risk = portfolio_variance ** 0.5
         sharpe_ratio = expected_return / portfolio_risk if portfolio_risk > 0 else 0
 
+        # Run classical Markowitz baseline for comparison
+        classical_result = markowitz_baseline(
+            expected_returns=mean_returns,
+            covariance=cov_matrix,
+            budget=1.0,
+            risk_aversion=risk_aversion / 10000,  # Scale down to match classical range (0-1)
+        )
+
+        # Calculate annualized classical metrics
+        classical_return = classical_result.expected_return * 252
+        classical_variance = classical_result.variance * 252
+        classical_risk = np.sqrt(classical_variance)
+        classical_sharpe = classical_return / classical_risk if classical_risk > 0 else 0
+
+        # Score solution quality
+        quality = score_solution(
+            allocations=np.array(weights),
+            expected_return=expected_return,
+            portfolio_risk=portfolio_risk,
+            budget=1.0,
+            classical_return=classical_return if classical_result.success else None,
+            classical_risk=classical_risk if classical_result.success else None,
+        )
+
         response = {
             'success': True,
             'tickers': tickers,
             'selected_assets': selected_assets,
             'weights': {t: round(w * 100, 1) for t, w in zip(tickers, weights)},
-            'binary_solution': binary_solution,
             'optimal_value': round(result.optimal_value, 6),
+            'resolution': {
+                'qubits_per_asset': resolution_qubits,
+                'allocation_levels': 2 ** resolution_qubits,
+                'total_qubits': total_qubits,
+            },
             'expected_return': round(expected_return * 100, 2),
             'portfolio_risk': round(portfolio_risk * 100, 2),
             'sharpe_ratio': round(sharpe_ratio, 2),
@@ -207,40 +326,65 @@ def optimize():
                 'reps': reps if algorithm == 'vqe' else None,
                 'qaoa_layers': qaoa_layers if algorithm == 'qaoa' else None,
                 'backend': backend_type
-            }
+            },
+            'warm_start': {
+                'enabled': use_warm_start,
+                'method': warm_start_result.method if warm_start_result else None,
+                'estimated_improvement': round(warm_start_result.estimated_improvement, 1) if warm_start_result else None,
+            },
+            'classical_baseline': {
+                'expected_return': round(classical_return * 100, 2),
+                'portfolio_risk': round(classical_risk * 100, 2),
+                'sharpe_ratio': round(classical_sharpe, 2),
+                'allocations': {t: round(w * 100, 1) for t, w in zip(tickers, classical_result.allocations)},
+                'success': classical_result.success,
+            },
+            'convergence': {
+                'history': result.history[:100] if len(result.history) > 100 else result.history,
+                'best_history': result.best_history[:100] if len(result.best_history) > 100 else result.best_history,
+                'converged': result.converged,
+            },
+            'quality_score': {
+                'total_score': round(quality.total_score, 1),
+                'grade': quality.grade,
+                'components': {k: round(v, 1) for k, v in quality.component_scores.items()},
+                'summary': quality.summary,
+            },
         }
+
+        # Add measurement statistics if available
+        if result.measurement_counts:
+            total = sum(result.measurement_counts.values())
+            sorted_counts = sorted(result.measurement_counts.items(),
+                                   key=lambda x: x[1], reverse=True)[:5]
+            response['measurements'] = {
+                'total_shots': total,
+                'top_solutions': [
+                    {'bitstring': bs, 'count': count, 'probability': round(count/total*100, 1)}
+                    for bs, count in sorted_counts
+                ]
+            }
 
         logger.info(f"Optimization complete: {selected_assets}")
         return jsonify(response)
 
+    except QuantumPortfolioError as e:
+        logger.exception("Optimization failed with typed exception")
+        error_dict = e.to_dict()
+        return jsonify({
+            'error': error_dict['message'],
+            'technical_details': str(e),
+            'error_type': error_dict['error_type'],
+            'details': error_dict.get('details', {})
+        }), 500
     except Exception as e:
         logger.exception("Optimization failed")
-        return jsonify({'error': str(e)}), 500
-
-
-def _extract_binary_solution(result, num_assets):
-    """Extract binary selection from VQE result.
-
-    Uses the best_bitstring from sampler measurements when available,
-    otherwise falls back to heuristic based on energy.
-    """
-    # Use actual bitstring from sampler if available
-    if result.best_bitstring is not None:
-        bitstring = result.best_bitstring
-        # Pad or truncate to match num_assets
-        bitstring = bitstring.zfill(num_assets)[-num_assets:]
-        # Convert to list of integers (note: bitstring is MSB first, reverse for asset order)
-        return [int(b) for b in bitstring[::-1]]
-
-    # Fallback heuristic when sampler was not available
-    optimal_val = result.optimal_value
-    if optimal_val < -0.1:
-        return [1] * num_assets
-    else:
-        selection = [0] * num_assets
-        for i in range(min(num_assets // 2 + 1, num_assets)):
-            selection[i] = 1
-        return selection
+        error_info = classify_error(str(e))
+        return jsonify({
+            'error': error_info['message'],
+            'technical_details': error_info['technical'],
+            'error_type': error_info['type']
+        }), 500
 
 
 @app.route('/backends')

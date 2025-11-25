@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple
 
@@ -66,6 +67,13 @@ class PortfolioQAOASolver:
         """
         if sampler is None:
             raise ValueError("Sampler is required for QAOA.")
+        if estimator is not None:
+            warnings.warn(
+                "estimator parameter is deprecated and will be removed in a future version. "
+                "QAOA uses Sampler primitive only.",
+                DeprecationWarning,
+                stacklevel=2
+            )
         self.sampler = sampler
         self.estimator = estimator
         self.layers = layers
@@ -140,9 +148,11 @@ class PortfolioQAOASolver:
                 qc.rz(gamma * coeff, i)
 
         # Quadratic terms: J_{ij} * Z_i * Z_j -> CNOT-RZ-CNOT sequence
+        # Note: QUBO matrix is guaranteed symmetric by QUBOProblem validation
+        # (qubo_formulation.py:42-43), so Q[i,j] == Q[j,i]. We use Q[i,j] directly.
         for i in range(num_qubits):
             for j in range(i + 1, num_qubits):
-                coeff = qubo.quadratic[i, j] + qubo.quadratic[j, i]
+                coeff = qubo.quadratic[i, j]  # Symmetric matrix: Q[i,j] == Q[j,i]
                 if abs(coeff) > 1e-10:
                     # ZZ interaction: exp(-i * gamma * J * Z_i * Z_j)
                     # Implemented as: CNOT(i,j) - RZ(2*gamma*J, j) - CNOT(i,j)

@@ -1,5 +1,6 @@
 """Calculate logarithmic returns as specified in the research paper."""
 
+import warnings
 import numpy as np
 import pandas as pd
 from typing import Union, Optional
@@ -14,11 +15,18 @@ def calculate_logarithmic_returns(
 
     Parameters:
         prices: Asset price data (time x assets)
-        time_window: Rolling window for calculations (default 30 days)
+        time_window: Deprecated - this parameter has no effect.
 
     Returns:
         Logarithmic returns array
     """
+    if time_window != 30:
+        warnings.warn(
+            "time_window parameter has no effect and will be removed in a future version",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
     if isinstance(prices, pd.DataFrame):
         prices = prices.values
 

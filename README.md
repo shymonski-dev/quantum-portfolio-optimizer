@@ -117,6 +117,7 @@ quantum_portfolio_optimizer/
 │   │   ├── qubo_formulation.py # QUBO builder
 │   │   ├── vqe_solver.py       # VQE implementation
 │   │   ├── qaoa_solver.py      # QAOA implementation
+│   │   ├── constraints.py      # Constraint system
 │   │   └── ansatz_library.py   # Quantum circuits
 │   ├── data/                   # Data handling
 │   │   ├── data_fetcher.py     # Yahoo Finance integration
@@ -183,7 +184,7 @@ pytest -v
 pytest tests/test_vqe_solver.py
 ```
 
-All 39 tests pass, including integration tests, QAOA tests, and IBM Quantum compatibility tests.
+All 271 tests pass, including integration tests, QAOA tests, constraint system tests, and IBM Quantum compatibility tests.
 
 ## Requirements
 

@@ -164,6 +164,8 @@ class PortfolioVQESolver:
         if hasattr(result, "values"):
             values = getattr(result, "values")
             if isinstance(values, (list, tuple, np.ndarray)):
+                if len(values) == 0:
+                    raise ValueError("Estimator returned empty values array")
                 return float(np.real(values[0]))
             return float(np.real(values))
 

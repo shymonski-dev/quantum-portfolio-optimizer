@@ -25,6 +25,7 @@ class DifferentialEvolutionConfig:
     convergence_window: int = 10  # Check over 10 generations
     adaptive_mutation: bool = True
     adaptive_recombination: bool = True
+    x0: Optional[Sequence[float]] = None  # Initial point for warm start
 
 
 def run_differential_evolution(
@@ -75,5 +76,6 @@ def run_differential_evolution(
         polish=config.polish,
         updating="immediate",
         callback=callback if history.maxlen else None,
+        x0=config.x0,  # Warm start initial point
     )
     return result

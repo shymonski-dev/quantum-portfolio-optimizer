@@ -1,44 +1,30 @@
-"""Constraint helper objects for portfolio construction."""
+"""DEPRECATED: Use quantum_portfolio_optimizer.core.constraints instead.
 
-from __future__ import annotations
+This module is deprecated and will be removed in a future version.
+All constraint classes have been moved to the core.constraints module.
 
-from dataclasses import dataclass
-from typing import Dict
+Migration guide:
+    # Old import (deprecated)
+    from quantum_portfolio_optimizer.data.portfolio_constraints import BudgetConstraint
 
-import numpy as np
+    # New import (recommended)
+    from quantum_portfolio_optimizer.core.constraints import InequalityConstraint as BudgetConstraint
+"""
 
+import warnings
 
-@dataclass
-class BudgetConstraint:
-    limit: float
+warnings.warn(
+    "quantum_portfolio_optimizer.data.portfolio_constraints is deprecated. "
+    "Use quantum_portfolio_optimizer.core.constraints instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-    def penalty(self, allocations: np.ndarray) -> float:
-        excess = allocations.sum() - self.limit
-        return float(max(0.0, excess))
+# Re-export from new location for backward compatibility
+from quantum_portfolio_optimizer.core.constraints import (
+    BudgetConstraint,
+    AllocationBounds,
+    evaluate_constraints,
+)
 
-    def is_satisfied(self, allocations: np.ndarray, atol: float = 1e-6) -> bool:
-        return allocations.sum() <= self.limit + atol
-
-
-@dataclass
-class AllocationBounds:
-    lower: float
-    upper: float
-
-    def project(self, allocations: np.ndarray) -> np.ndarray:
-        return np.clip(allocations, self.lower, self.upper, dtype=float)
-
-    def is_satisfied(self, allocations: np.ndarray, atol: float = 1e-6) -> bool:
-        return bool(np.all(allocations >= self.lower - atol) and np.all(allocations <= self.upper + atol))
-
-
-def evaluate_constraints(
-    allocations: np.ndarray,
-    constraints: Dict[str, BudgetConstraint | AllocationBounds],
-) -> Dict[str, bool]:
-    return {
-        name: constraint.is_satisfied(allocations)
-        if hasattr(constraint, "is_satisfied")
-        else True
-        for name, constraint in constraints.items()
-    }
+__all__ = ["BudgetConstraint", "AllocationBounds", "evaluate_constraints"]

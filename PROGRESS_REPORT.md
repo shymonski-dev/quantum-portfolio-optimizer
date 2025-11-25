@@ -56,6 +56,27 @@ The Quantum Portfolio Optimizer is now fully operational with both local simulat
   - `test_solution_extraction.py` - 7 tests for binary solution extraction
   - `test_qaoa_solver.py` - 12 tests for QAOA solver
 
+### Phase 6: Bug Fixes & Constraint System (Complete)
+- **Critical Bug Fix - QAOA Coefficient Double-Counting**: Fixed `qaoa_solver.py:155` where quadratic coefficients were incorrectly doubled for symmetric QUBO matrices. The code used `Q[i,j] + Q[j,i]` but since `QUBOProblem` enforces symmetry, this doubled the coefficient. Now correctly uses `Q[i,j]` only.
+- **VQE Empty Array Bounds Check**: Added proper validation in `vqe_solver.py:167` to raise `ValueError` instead of `IndexError` when Estimator returns empty values.
+- **Deprecation Warnings Added**:
+  - `time_window` parameter in `returns_calculator.py` (unused, has no effect)
+  - `estimator` parameter in `PortfolioQAOASolver` (QAOA uses Sampler only)
+- **Unified Constraint System**: New `core/constraints.py` module with:
+  - `Constraint` abstract base class
+  - `EqualityConstraint` for budget constraints
+  - `InequalityConstraint` for upper-bound constraints
+  - `BoundsConstraint` for per-variable bounds
+  - `ConstraintManager` for managing multiple constraints
+  - Backward compatibility aliases for legacy code
+- **Dead Code Cleanup**: `data/portfolio_constraints.py` converted to deprecation redirect
+- **Extended Test Suite**: 271 tests total
+  - `test_qaoa_coefficient_bug.py` - QAOA coefficient correctness tests
+  - `test_vqe_energy_extraction.py` - VQE error handling tests
+  - `test_returns_time_window.py` - Deprecation warning tests
+  - `test_qubo_coefficients.py` - QUBO matrix symmetry and energy tests
+  - `test_constraints.py` - Full constraint system coverage (25 tests)
+
 ## Technical Details
 
 ### Architecture
@@ -104,8 +125,14 @@ Portfolio Results
 - `src/quantum_portfolio_optimizer/cli.py` - Command-line interface
 - `src/quantum_portfolio_optimizer/utils/config_loader.py` - YAML config loader
 - `src/quantum_portfolio_optimizer/core/qaoa_solver.py` - QAOA solver implementation
+- `src/quantum_portfolio_optimizer/core/constraints.py` - Unified constraint system
 - `tests/test_qaoa_solver.py` - QAOA test suite
 - `tests/test_solution_extraction.py` - Binary solution extraction tests
+- `tests/test_constraints.py` - Constraint system tests
+- `tests/test_qaoa_coefficient_bug.py` - QAOA coefficient correctness tests
+- `tests/test_vqe_energy_extraction.py` - VQE error handling tests
+- `tests/test_returns_time_window.py` - Deprecation warning tests
+- `tests/test_qubo_coefficients.py` - QUBO coefficient tests
 - `config.yaml` - Default configuration
 
 ### Modified Files
@@ -135,7 +162,7 @@ python -m quantum_portfolio_optimizer
 ### Tests
 ```bash
 pytest -v
-# All 39 tests should pass
+# All 271 tests should pass
 ```
 
 ## IBM Quantum Devices Tested

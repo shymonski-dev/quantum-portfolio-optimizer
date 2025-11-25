@@ -12,7 +12,14 @@ from __future__ import annotations
 import os
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from quantum_portfolio_optimizer.exceptions import (
+    BackendError,
+    IBMAuthenticationError,
+    IBMBackendNotFoundError,
+    IBMSessionError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +113,13 @@ def _get_runtime_service(token: Optional[str] = None, channel: str = "ibm_quantu
 
     Returns:
         QiskitRuntimeService instance
+
+    Raises:
+        BackendError: If qiskit-ibm-runtime is not installed
+        IBMAuthenticationError: If authentication fails
     """
     if not IBM_RUNTIME_AVAILABLE:
-        raise ImportError(
+        raise BackendError(
             "qiskit-ibm-runtime is not installed. "
             "Install with: pip install qiskit-ibm-runtime"
         )
@@ -135,9 +146,14 @@ def _get_runtime_service(token: Optional[str] = None, channel: str = "ibm_quantu
             logger.info(f"Connected to IBM Quantum via {channel} channel with saved credentials")
         return service
     except Exception as e:
-        raise ConnectionError(
-            f"Failed to connect to IBM Quantum: {e}\n"
-            "Ensure your API token is set via QE_TOKEN environment variable or saved credentials."
+        error_str = str(e).lower()
+        if "token" in error_str or "auth" in error_str or "credential" in error_str:
+            raise IBMAuthenticationError(
+                f"Invalid or missing API token. "
+                f"Ensure QE_TOKEN environment variable is set correctly. Original error: {e}"
+            )
+        raise IBMAuthenticationError(
+            f"Failed to connect to IBM Quantum: {e}"
         )
 
 
@@ -256,9 +272,15 @@ def get_ibm_quantum_backend(config: Dict[str, Any]) -> Tuple[Any, Any]:
 
     Returns:
         Tuple of (EstimatorV2, SamplerV2) configured for IBM Quantum hardware.
+
+    Raises:
+        BackendError: If qiskit-ibm-runtime is not installed or device not specified
+        IBMAuthenticationError: If authentication fails
+        IBMBackendNotFoundError: If the requested backend is not available
+        IBMSessionError: If session creation fails
     """
     if not IBM_RUNTIME_AVAILABLE:
-        raise ImportError(
+        raise BackendError(
             "qiskit-ibm-runtime is not installed. "
             "Install with: pip install .[ibm] or pip install qiskit-ibm-runtime"
         )
@@ -266,7 +288,7 @@ def get_ibm_quantum_backend(config: Dict[str, Any]) -> Tuple[Any, Any]:
     # Parse configuration
     device = config.get("device")
     if not device:
-        raise ValueError("'device' must be specified in the backend config for IBM Quantum.")
+        raise BackendError("'device' must be specified in the backend config for IBM Quantum.")
 
     channel = config.get("channel", "ibm_quantum")
     instance = config.get("instance")
@@ -313,8 +335,9 @@ def get_ibm_quantum_backend(config: Dict[str, Any]) -> Tuple[Any, Any]:
         logger.info(f"  - Status: {backend.status().status_msg}")
     except Exception as e:
         available = [b.name for b in service.backends()]
-        raise ValueError(
-            f"Backend '{device}' not found. Available backends: {available[:10]}..."
+        raise IBMBackendNotFoundError(
+            backend_name=device,
+            available_backends=available[:10],
         ) from e
 
     # Build options
