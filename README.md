@@ -1,28 +1,37 @@
 # Quantum Portfolio Optimizer
 
-A quantum computing application for portfolio optimization using Variational Quantum Eigensolver (VQE) algorithms. This project enables users to optimize investment portfolios using both local quantum simulators and real IBM Quantum hardware.
+A quantum computing application for portfolio optimization using VQE and QAOA algorithms. This project enables users to optimize investment portfolios using both local quantum simulators and real IBM Quantum hardware, with support for up to 25 assets.
 
 ## Overview
 
-The Quantum Portfolio Optimizer uses quantum computing to solve the Markowitz portfolio optimization problem. It formulates the asset allocation as a Quadratic Unconstrained Binary Optimization (QUBO) problem and solves it using VQE, a hybrid quantum-classical algorithm.
+The Quantum Portfolio Optimizer uses quantum computing to solve the Markowitz portfolio optimization problem. It formulates the asset allocation as a Quadratic Unconstrained Binary Optimization (QUBO) problem and solves it using hybrid quantum-classical algorithms.
+
+### Supported Algorithms
+
+- **VQE (Variational Quantum Eigensolver)**: Recommended for most use cases. Uses shallow parameterized circuits with configurable ansätze (RealAmplitudes, EfficientSU2). Best for 10+ assets due to lower circuit depth.
+- **QAOA (Quantum Approximate Optimization Algorithm)**: Experimental alternative. Uses problem-specific cost and mixer layers. Configurable depth (p=1 or p=2).
 
 ### How It Works
 
 1. **Data Fetching**: Retrieves historical stock prices from Yahoo Finance
 2. **Returns Calculation**: Computes logarithmic returns and covariance matrices
 3. **QUBO Formulation**: Converts the portfolio optimization into a quantum-compatible format
-4. **VQE Optimization**: Uses variational quantum circuits to find optimal asset allocations
-5. **Results Interpretation**: Translates quantum results into portfolio weights and metrics
+4. **Quantum Optimization**: Uses VQE or QAOA to find optimal asset allocations
+5. **Binary Solution Extraction**: Samples the optimized circuit to get actual portfolio selections
+6. **Results Interpretation**: Translates quantum results into portfolio weights and metrics
 
 ## Features
 
+- **Multiple Algorithms**: Choose between VQE (recommended) and QAOA (experimental) via web UI
+- **Binary Solution Extraction**: Actual bitstring sampling from optimized circuits
 - **Web Interface**: User-friendly Flask-based frontend for easy interaction
 - **Dual Backend Support**: Run on local simulators or IBM Quantum hardware
 - **Real-time Data**: Fetches live market data via Yahoo Finance
 - **Configurable Risk**: Adjustable risk tolerance from conservative to aggressive
-- **Multiple Ansätze**: Support for RealAmplitudes and EfficientSU2 quantum circuits
+- **Multiple Ansätze**: Support for RealAmplitudes and EfficientSU2 quantum circuits (VQE)
 - **Error Mitigation**: Built-in support for dynamical decoupling and Pauli twirling
 - **Qiskit 2.x Compatible**: Updated for the latest Qiskit quantum computing framework
+- **Scalable**: Supports up to 25 assets on IBM Quantum hardware (156 qubits)
 
 ## Installation
 
@@ -69,11 +78,22 @@ pytest
 1. **Enter Stock Tickers**: Comma-separated symbols (e.g., AAPL, GOOG, MSFT)
 2. **Set Date Range**: Historical period for analysis
 3. **Adjust Risk Tolerance**: Slider from conservative (left) to aggressive (right)
-4. **Configure Algorithm**: Choose ansatz type and repetitions
-5. **Select Backend**:
+4. **Select Backend**:
    - **Local Simulator**: Fast, runs on your computer
    - **IBM Quantum Hardware**: Real quantum computer (requires credentials)
+5. **Configure Algorithm** (Advanced Settings):
+   - **VQE**: Choose ansatz type (RealAmplitudes/EfficientSU2) and circuit depth
+   - **QAOA**: Choose number of layers (p=1 or p=2)
 6. **Run Optimization**: Click "Optimize Portfolio" and view results
+
+### Algorithm Selection Guide
+
+| Scenario | Recommended Algorithm |
+|----------|----------------------|
+| 10+ assets | VQE with RealAmplitudes |
+| Quick exploration | VQE with reps=1 |
+| Small problems (<8 assets) | Either VQE or QAOA |
+| Research/comparison | Try both |
 
 ### IBM Quantum Hardware Setup
 
@@ -96,6 +116,7 @@ quantum_portfolio_optimizer/
 │   ├── core/                   # Core algorithms
 │   │   ├── qubo_formulation.py # QUBO builder
 │   │   ├── vqe_solver.py       # VQE implementation
+│   │   ├── qaoa_solver.py      # QAOA implementation
 │   │   └── ansatz_library.py   # Quantum circuits
 │   ├── data/                   # Data handling
 │   │   ├── data_fetcher.py     # Yahoo Finance integration
@@ -162,7 +183,7 @@ pytest -v
 pytest tests/test_vqe_solver.py
 ```
 
-All 20 tests pass, including integration tests and IBM Quantum compatibility tests.
+All 39 tests pass, including integration tests, QAOA tests, and IBM Quantum compatibility tests.
 
 ## Requirements
 

@@ -9,6 +9,7 @@ from quantum_portfolio_optimizer.data import fetch_stock_data
 from quantum_portfolio_optimizer.data.returns_calculator import calculate_logarithmic_returns
 from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO
 from quantum_portfolio_optimizer.core.vqe_solver import PortfolioVQESolver
+from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
 from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
 from quantum_portfolio_optimizer.simulation.provider import get_provider
 
@@ -38,9 +39,15 @@ def optimize():
         reps = int(data.get('reps', 2))
         backend_type = data.get('backend', 'local_simulator')
         maxiter = int(data.get('maxiter', 50))
+        algorithm = data.get('algorithm', 'vqe')
+        qaoa_layers = int(data.get('qaoa_layers', 1))
 
         logger.info(f"Starting optimization: {tickers}, {start_date} to {end_date}")
-        logger.info(f"Settings: risk={risk_factor}, ansatz={ansatz_type}, reps={reps}, backend={backend_type}")
+        logger.info(f"Settings: algorithm={algorithm}, risk={risk_factor}, backend={backend_type}")
+        if algorithm == 'vqe':
+            logger.info(f"VQE Settings: ansatz={ansatz_type}, reps={reps}")
+        else:
+            logger.info(f"QAOA Settings: layers={qaoa_layers}")
 
         # Fetch market data
         stock_data = fetch_stock_data(tickers, start_date, end_date)
@@ -105,15 +112,7 @@ def optimize():
         else:
             backend_config = {"name": "local_simulator", "shots": 1024, "seed": 42}
 
-        estimator, _ = get_provider(backend_config)
-
-        # Configure optimizer
-        bounds = [(-2 * np.pi, 2 * np.pi)] * (num_assets * (reps + 1) * 2)  # Approximate param count
-        optimizer_config = DifferentialEvolutionConfig(
-            bounds=bounds,
-            maxiter=maxiter,
-            seed=42,
-        )
+        estimator, sampler = get_provider(backend_config)
 
         # Track progress
         progress_data = {'iteration': 0, 'best_energy': float('inf')}
@@ -121,15 +120,50 @@ def optimize():
             progress_data['iteration'] = iteration
             progress_data['best_energy'] = best_energy
 
-        # Run VQE
-        solver = PortfolioVQESolver(
-            estimator=estimator,
-            ansatz_name=ansatz_type,
-            ansatz_options={'reps': reps},
-            optimizer_config=optimizer_config,
-            seed=42,
-            progress_callback=progress_callback,
-        )
+        # Select and run the appropriate solver
+        if algorithm == 'qaoa':
+            # QAOA: Configure bounds for gamma and beta parameters
+            bounds = []
+            for _ in range(qaoa_layers):
+                bounds.append((0, 2 * np.pi))  # gamma
+                bounds.append((0, np.pi))       # beta
+
+            optimizer_config = DifferentialEvolutionConfig(
+                bounds=bounds,
+                maxiter=maxiter,
+                seed=42,
+            )
+
+            solver = PortfolioQAOASolver(
+                sampler=sampler,
+                estimator=estimator,
+                layers=qaoa_layers,
+                optimizer_config=optimizer_config,
+                seed=42,
+                progress_callback=progress_callback,
+                shots=1024,
+            )
+            logger.info(f"Running QAOA with {qaoa_layers} layers")
+        else:
+            # VQE: Configure optimizer bounds for ansatz parameters
+            bounds = [(-2 * np.pi, 2 * np.pi)] * (num_assets * (reps + 1) * 2)
+            optimizer_config = DifferentialEvolutionConfig(
+                bounds=bounds,
+                maxiter=maxiter,
+                seed=42,
+            )
+
+            solver = PortfolioVQESolver(
+                estimator=estimator,
+                sampler=sampler,
+                ansatz_name=ansatz_type,
+                ansatz_options={'reps': reps},
+                optimizer_config=optimizer_config,
+                seed=42,
+                progress_callback=progress_callback,
+                extraction_shots=1024,
+            )
+            logger.info(f"Running VQE with {ansatz_type} ansatz, reps={reps}")
 
         result = solver.solve(qubo)
 
@@ -167,9 +201,11 @@ def optimize():
             'sharpe_ratio': round(sharpe_ratio, 2),
             'iterations': result.num_evaluations,
             'settings': {
+                'algorithm': algorithm,
                 'risk_factor': risk_factor,
-                'ansatz': ansatz_type,
-                'reps': reps,
+                'ansatz': ansatz_type if algorithm == 'vqe' else None,
+                'reps': reps if algorithm == 'vqe' else None,
+                'qaoa_layers': qaoa_layers if algorithm == 'qaoa' else None,
                 'backend': backend_type
             }
         }
@@ -185,26 +221,22 @@ def optimize():
 def _extract_binary_solution(result, num_assets):
     """Extract binary selection from VQE result.
 
-    Uses the optimal parameters to sample the circuit and determine
-    which assets should be selected.
+    Uses the best_bitstring from sampler measurements when available,
+    otherwise falls back to heuristic based on energy.
     """
-    # For single-qubit resolution, we can interpret the energy landscape
-    # A simple heuristic: use threshold on optimal value
-    # In practice, you'd sample the final circuit and count bitstrings
+    # Use actual bitstring from sampler if available
+    if result.best_bitstring is not None:
+        bitstring = result.best_bitstring
+        # Pad or truncate to match num_assets
+        bitstring = bitstring.zfill(num_assets)[-num_assets:]
+        # Convert to list of integers (note: bitstring is MSB first, reverse for asset order)
+        return [int(b) for b in bitstring[::-1]]
 
-    # For now, use a simple approach based on the number of assets
-    # If optimal value is low, include more assets
+    # Fallback heuristic when sampler was not available
     optimal_val = result.optimal_value
-
-    # Simple heuristic: include assets based on energy
-    # Lower energy = more diversification typically
-    threshold = 0.5
     if optimal_val < -0.1:
-        # Low energy suggests good diversification
         return [1] * num_assets
     else:
-        # Higher energy, be more selective
-        # Include roughly half
         selection = [0] * num_assets
         for i in range(min(num_assets // 2 + 1, num_assets)):
             selection[i] = 1

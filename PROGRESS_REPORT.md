@@ -37,13 +37,32 @@ The Quantum Portfolio Optimizer is now fully operational with both local simulat
 - Updated all code for Qiskit 2.x API changes
 - Replaced deprecated `execute()` with `EstimatorV2`/`SamplerV2` primitives
 - Fixed `SparsePauliOp` initialization syntax
-- All 20 tests pass with Qiskit 2.x
+- All tests pass with Qiskit 2.x
+
+### Phase 5: Algorithm Improvements (Complete)
+- **Binary Solution Extraction**: VQE solver now uses Sampler primitive to extract actual bitstrings from optimized circuits
+  - Added `best_bitstring` and `measurement_counts` fields to `VQEResult`
+  - Proper V1/V2 sampler interface handling
+- **QAOA Implementation**: Full Quantum Approximate Optimization Algorithm solver
+  - `PortfolioQAOASolver` class with configurable layers (p=1, 2, or more)
+  - Cost layer with ZZ interactions for QUBO coupling terms
+  - Mixer layer with RX gates for state superposition
+  - `get_qaoa_circuit_depth()` utility for hardware planning
+- **Web UI Algorithm Selector**: User can now choose between VQE and QAOA
+  - Algorithm dropdown in Advanced Settings
+  - VQE-specific settings (ansatz type, reps)
+  - QAOA-specific settings (number of layers) with depth warnings
+- **Extended Test Suite**: 39 tests total (19 new tests added)
+  - `test_solution_extraction.py` - 7 tests for binary solution extraction
+  - `test_qaoa_solver.py` - 12 tests for QAOA solver
 
 ## Technical Details
 
 ### Architecture
 ```
 User Interface (Flask)
+    ↓
+Algorithm Selection (VQE/QAOA)
     ↓
 Backend Selection (provider.py)
     ↓
@@ -52,7 +71,10 @@ Backend Selection (provider.py)
 │ (StatevectorSampler)│ (qiskit-ibm-runtime)│
 └─────────────────┴──────────────────┘
     ↓
-VQE Solver (vqe_solver.py)
+┌─────────────────┬──────────────────┐
+│ VQE Solver      │ QAOA Solver      │
+│ (vqe_solver.py) │ (qaoa_solver.py) │
+└─────────────────┴──────────────────┘
     ↓
 QUBO Formulation (qubo_formulation.py)
     ↓
@@ -60,10 +82,11 @@ Portfolio Results
 ```
 
 ### Quantum Circuit Configuration
-- **Ansätze**: RealAmplitudes, EfficientSU2
+- **VQE Ansätze**: RealAmplitudes, EfficientSU2 (configurable reps)
+- **QAOA Layers**: Configurable p=1, 2, or more
 - **Optimizer**: Differential Evolution (SciPy)
 - **Shots**: Configurable (default 1024 local, 4096 IBM)
-- **Repetitions**: Configurable circuit depth
+- **Binary Solution Extraction**: Sampler-based bitstring measurement
 
 ### Error Mitigation (IBM Quantum)
 - **Resilience Level 0**: No mitigation
@@ -80,11 +103,17 @@ Portfolio Results
 - `src/quantum_portfolio_optimizer/data/data_fetcher.py` - Yahoo Finance integration
 - `src/quantum_portfolio_optimizer/cli.py` - Command-line interface
 - `src/quantum_portfolio_optimizer/utils/config_loader.py` - YAML config loader
+- `src/quantum_portfolio_optimizer/core/qaoa_solver.py` - QAOA solver implementation
+- `tests/test_qaoa_solver.py` - QAOA test suite
+- `tests/test_solution_extraction.py` - Binary solution extraction tests
 - `config.yaml` - Default configuration
 
 ### Modified Files
-- `src/quantum_portfolio_optimizer/core/vqe_solver.py` - Qiskit 2.x updates
+- `src/quantum_portfolio_optimizer/core/vqe_solver.py` - Qiskit 2.x updates + binary solution extraction
 - `src/quantum_portfolio_optimizer/core/ansatz_library.py` - Updated API
+- `src/quantum_portfolio_optimizer/core/__init__.py` - Export QAOA classes
+- `frontend/app.py` - Algorithm selector support
+- `frontend/templates/index.html` - Algorithm selection UI
 - `tests/` - Updated for new Qiskit syntax
 - `requirements.txt` - Added Flask, yfinance
 - `setup.py` - Added optional IBM dependencies
@@ -106,7 +135,7 @@ python -m quantum_portfolio_optimizer
 ### Tests
 ```bash
 pytest -v
-# All 20 tests should pass
+# All 39 tests should pass
 ```
 
 ## IBM Quantum Devices Tested
@@ -115,11 +144,11 @@ pytest -v
 - `ibm_brussels` (127 qubits) - Available
 
 ## Future Enhancements (Optional)
-- QAOA solver implementation
 - CVaR (Conditional Value at Risk) model
 - Visualization module for efficient frontiers
 - Portfolio backtesting
 - Multi-period optimization
+- Warm-start initialization from classical solutions
 
 ## Resolved Issues
 
@@ -132,4 +161,4 @@ The earlier Qiskit build environment issue with AppleClang 17.0 has been resolve
 The project now runs successfully on Python 3.14 with macOS.
 
 ---
-*Last updated: November 2024*
+*Last updated: November 2025*

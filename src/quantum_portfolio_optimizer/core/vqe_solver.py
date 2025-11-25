@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable, List, Optional
+import logging
+from dataclasses import dataclass, field
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -11,6 +12,8 @@ from ..simulation.provider import get_provider
 from .ansatz_library import analyse_circuit, get_ansatz, initialise_parameters
 from .optimizer_interface import DifferentialEvolutionConfig, run_differential_evolution
 from .qubo_formulation import QUBOProblem
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -23,14 +26,22 @@ class VQEResult:
     ansatz_report: dict
     converged: bool
     optimizer_message: str
+    # New fields for binary solution extraction (optional for backward compatibility)
+    best_bitstring: Optional[str] = None
+    measurement_counts: Optional[Dict[str, int]] = None
 
 
 class PortfolioVQESolver:
-    """Simple VQE loop using Qiskit's Estimator primitive."""
+    """Simple VQE loop using Qiskit's Estimator primitive.
+
+    Optionally accepts a Sampler primitive for extracting binary solutions
+    from the optimized circuit via measurement sampling.
+    """
 
     def __init__(
         self,
         estimator: object,
+        sampler: Optional[object] = None,  # NEW: for binary solution extraction
         ansatz_name: str = "real_amplitudes",
         ansatz_options: Optional[dict] = None,
         init_strategy: str = "zeros",
@@ -41,10 +52,12 @@ class PortfolioVQESolver:
         optimizer_config: Optional[DifferentialEvolutionConfig] = None,
         seed: Optional[int] = None,
         progress_callback: Optional[Callable[[int, float, float], None]] = None,
+        extraction_shots: int = 1024,  # NEW: shots for solution extraction
     ) -> None:
         if estimator is None:
             raise ValueError("Estimator cannot be None.")
         self.estimator = estimator
+        self.sampler = sampler  # NEW
         self.ansatz_name = ansatz_name
         self.ansatz_options = ansatz_options or {}
         self.init_strategy = init_strategy
@@ -53,6 +66,7 @@ class PortfolioVQESolver:
         self.optimizer_config = optimizer_config
         self.seed = seed
         self.progress_callback = progress_callback
+        self.extraction_shots = extraction_shots  # NEW
 
     def solve(self, qubo: QUBOProblem) -> VQEResult:
         num_qubits = qubo.num_variables
@@ -118,6 +132,18 @@ class PortfolioVQESolver:
         optimal_parameters = np.asarray(result.x, dtype=float)
         optimal_value = float(result.fun)
 
+        # Extract binary solution if sampler is available
+        best_bitstring = None
+        measurement_counts = None
+        if self.sampler is not None:
+            try:
+                best_bitstring, measurement_counts = self.extract_solution(
+                    ansatz, optimal_parameters, num_qubits, shots=self.extraction_shots
+                )
+                logger.info(f"Extracted best bitstring: {best_bitstring}")
+            except Exception as e:
+                logger.warning(f"Solution extraction failed: {e}")
+
         report = analyse_circuit(ansatz, name=self.ansatz_name).__dict__
         return VQEResult(
             optimal_parameters=optimal_parameters,
@@ -128,6 +154,8 @@ class PortfolioVQESolver:
             ansatz_report=report,
             converged=bool(getattr(result, "success", False)),
             optimizer_message=str(getattr(result, "message", "")),
+            best_bitstring=best_bitstring,
+            measurement_counts=measurement_counts,
         )
 
     @staticmethod
@@ -150,3 +178,89 @@ class PortfolioVQESolver:
                 raise ValueError("Unsupported estimator result format") from exc
 
         raise ValueError("Estimator result object is not recognised.")
+
+    def extract_solution(
+        self,
+        ansatz,
+        parameters: np.ndarray,
+        num_qubits: int,
+        shots: int = 1024,
+    ) -> Tuple[str, Dict[str, int]]:
+        """Sample the optimized circuit to extract binary solution bitstrings.
+
+        Args:
+            ansatz: The parameterized quantum circuit (ansatz).
+            parameters: Optimal parameters from VQE optimization.
+            num_qubits: Number of qubits (for padding bitstrings).
+            shots: Number of measurement shots.
+
+        Returns:
+            Tuple of (best_bitstring, counts_dict).
+        """
+        if self.sampler is None:
+            raise ValueError("Sampler is required for solution extraction.")
+
+        # Bind parameters and add measurements
+        bound_circuit = ansatz.assign_parameters(parameters)
+        measured_circuit = bound_circuit.copy()
+        measured_circuit.measure_all()
+
+        # Run sampler - handle both V1 and V2 interfaces
+        try:
+            # V2 interface: sampler.run([(circuit, params)])
+            job = self.sampler.run([(measured_circuit, [])])
+        except TypeError:
+            # V1 interface: sampler.run(circuits, shots=shots)
+            job = self.sampler.run([measured_circuit], shots=shots)
+
+        result = job.result()
+        counts = self._extract_counts(result, num_qubits)
+
+        # Find the most frequent bitstring
+        best_bitstring = max(counts, key=counts.get)
+        return best_bitstring, counts
+
+    @staticmethod
+    def _extract_counts(result: object, num_qubits: int) -> Dict[str, int]:
+        """Extract measurement counts from sampler result, handling V1/V2 interfaces.
+
+        Args:
+            result: Sampler result object.
+            num_qubits: Number of qubits for padding bitstrings.
+
+        Returns:
+            Dictionary mapping bitstrings to counts.
+        """
+        # V2 interface: result[0].data.<key>.get_counts()
+        if hasattr(result, "__getitem__"):
+            try:
+                first = result[0]
+                if hasattr(first, "data"):
+                    data = first.data
+                    # Get the first data key (measurement register name)
+                    key = next(iter(data.keys())) if hasattr(data, "keys") else None
+                    if key is not None:
+                        bitarray = getattr(data, key)
+                        if hasattr(bitarray, "get_counts"):
+                            raw_counts = bitarray.get_counts()
+                            # Pad bitstrings to num_qubits length
+                            counts = {}
+                            for bitstring, count in raw_counts.items():
+                                padded = bitstring.zfill(num_qubits)
+                                counts[padded] = count
+                            return counts
+            except (IndexError, StopIteration, AttributeError):
+                pass
+
+        # V1 interface: result.quasi_dists or result.metadata
+        if hasattr(result, "quasi_dists"):
+            quasi_dists = result.quasi_dists
+            if quasi_dists and len(quasi_dists) > 0:
+                dist = quasi_dists[0]
+                counts = {}
+                for state, prob in dist.items():
+                    bitstring = format(state, f"0{num_qubits}b")
+                    counts[bitstring] = int(prob * 1024)  # Approximate counts
+                return counts
+
+        raise ValueError("Unsupported sampler result format")

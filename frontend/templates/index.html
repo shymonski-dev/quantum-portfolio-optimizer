@@ -393,19 +393,48 @@
                         <span id="settings-arrow">&#9654;</span> Advanced Settings
                     </div>
                     <div class="settings-content" id="advanced-settings">
-                        <div class="row">
-                            <div class="form-group">
-                                <label for="ansatz">Ansatz Type</label>
-                                <select id="ansatz">
-                                    <option value="RealAmplitudes">RealAmplitudes</option>
-                                    <option value="EfficientSU2">EfficientSU2</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="reps">Circuit Depth (reps)</label>
-                                <input type="number" id="reps" value="2" min="1" max="5">
+                        <div class="form-group">
+                            <label for="algorithm">Algorithm</label>
+                            <select id="algorithm" onchange="toggleAlgorithmSettings()">
+                                <option value="vqe">VQE (Recommended for 10+ assets)</option>
+                                <option value="qaoa">QAOA (Experimental)</option>
+                            </select>
+                        </div>
+
+                        <!-- VQE-specific settings -->
+                        <div id="vqe-settings">
+                            <div class="row">
+                                <div class="form-group">
+                                    <label for="ansatz">Ansatz Type</label>
+                                    <select id="ansatz">
+                                        <option value="RealAmplitudes">RealAmplitudes</option>
+                                        <option value="EfficientSU2">EfficientSU2</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reps">Circuit Depth (reps)</label>
+                                    <input type="number" id="reps" value="2" min="1" max="5">
+                                </div>
                             </div>
                         </div>
+
+                        <!-- QAOA-specific settings -->
+                        <div id="qaoa-settings" style="display: none;">
+                            <div class="form-group">
+                                <label for="qaoa_layers">QAOA Layers (p)</label>
+                                <select id="qaoa_layers">
+                                    <option value="1">p=1 (Shallow - Recommended)</option>
+                                    <option value="2">p=2 (Deeper)</option>
+                                </select>
+                            </div>
+                            <div id="qaoa-warning" style="background: rgba(255, 166, 0, 0.2); border: 1px solid #ffa600; border-radius: 8px; padding: 10px; margin-bottom: 15px;">
+                                <p style="color: #ffa600; font-size: 0.85rem;">
+                                    <strong>Note:</strong> QAOA circuits are deeper than VQE, which may result in higher noise on real hardware.
+                                    VQE is recommended for problems with more than 15 assets.
+                                </p>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label for="maxiter">Max Iterations</label>
                             <input type="number" id="maxiter" value="50" min="10" max="500">
@@ -489,6 +518,20 @@
             ibmSettings.style.display = backend === 'ibm_quantum' ? 'block' : 'none';
         }
 
+        function toggleAlgorithmSettings() {
+            const algorithm = document.getElementById('algorithm').value;
+            const vqeSettings = document.getElementById('vqe-settings');
+            const qaoaSettings = document.getElementById('qaoa-settings');
+
+            if (algorithm === 'vqe') {
+                vqeSettings.style.display = 'block';
+                qaoaSettings.style.display = 'none';
+            } else {
+                vqeSettings.style.display = 'none';
+                qaoaSettings.style.display = 'block';
+            }
+        }
+
         async function runOptimization() {
             const btn = document.getElementById('optimize-btn');
             const loading = document.getElementById('loading');
@@ -498,17 +541,20 @@
 
             // Gather form data
             const backend = document.getElementById('backend').value;
+            const algorithm = document.getElementById('algorithm').value;
             const data = {
                 tickers: document.getElementById('tickers').value,
                 start_date: document.getElementById('start_date').value,
                 end_date: document.getElementById('end_date').value,
                 risk_factor: document.getElementById('risk_factor').value,
                 backend: backend,
+                algorithm: algorithm,
                 ibm_device: document.getElementById('ibm_device').value,
                 ibm_api_key: document.getElementById('ibm_api_key').value,
                 ibm_crn: document.getElementById('ibm_crn').value,
                 ansatz: document.getElementById('ansatz').value,
                 reps: document.getElementById('reps').value,
+                qaoa_layers: document.getElementById('qaoa_layers').value,
                 maxiter: document.getElementById('maxiter').value
             };
 
