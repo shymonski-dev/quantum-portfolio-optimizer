@@ -7,7 +7,7 @@ from typing import Callable, List, Optional
 
 import numpy as np
 
-from ..simulation.local_backend import get_default_estimator
+from ..simulation.provider import get_provider
 from .ansatz_library import analyse_circuit, get_ansatz, initialise_parameters
 from .optimizer_interface import DifferentialEvolutionConfig, run_differential_evolution
 from .qubo_formulation import QUBOProblem
@@ -30,7 +30,7 @@ class PortfolioVQESolver:
 
     def __init__(
         self,
-        estimator: Optional[object] = None,
+        estimator: object,
         ansatz_name: str = "real_amplitudes",
         ansatz_options: Optional[dict] = None,
         init_strategy: str = "zeros",
@@ -40,10 +40,11 @@ class PortfolioVQESolver:
         ] = None,
         optimizer_config: Optional[DifferentialEvolutionConfig] = None,
         seed: Optional[int] = None,
-        shots: Optional[int] = None,
         progress_callback: Optional[Callable[[int, float, float], None]] = None,
     ) -> None:
-        self.estimator = estimator or get_default_estimator(shots=shots)
+        if estimator is None:
+            raise ValueError("Estimator cannot be None.")
+        self.estimator = estimator
         self.ansatz_name = ansatz_name
         self.ansatz_options = ansatz_options or {}
         self.init_strategy = init_strategy

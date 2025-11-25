@@ -14,11 +14,10 @@ from ..core.ansatz_library import (
     generate_ansatz_family,
     get_ansatz,
 )
-from ..core.optimizer_interface import DifferentialEvolutionConfig
 from ..core.qubo_formulation import PortfolioQUBO
 from ..core.vqe_solver import PortfolioVQESolver
 from ..data.sample_datasets import generate_synthetic_dataset
-from ..simulation.local_backend import get_default_estimator, get_default_sampler
+from ..simulation.provider import get_provider
 from ..simulation.noise_models import simple_depolarising_noise
 from ..utils.hashing import deterministic_hash
 from ..utils.json_cache import read_json_cache, write_json_cache
@@ -58,7 +57,7 @@ def benchmark_ansatze(
     qubo: PortfolioQUBO,
     ansatz_configs: Iterable[Tuple[str, Dict]],
     optimizer_factory: Callable[[int], DifferentialEvolutionConfig],
-    shots: int | None = None,
+    estimator: object,
     cache_dir: Optional[Path] = None,
     use_cache: bool = True,
 ) -> List[BenchmarkResult]:
@@ -72,7 +71,6 @@ def benchmark_ansatze(
             "offset": round(problem.offset, 12),
         }
     )
-    estimator = get_default_estimator(shots=shots)
 
     for name, options in ansatz_configs:
         opt_config = optimizer_factory(num_qubits)
@@ -84,7 +82,7 @@ def benchmark_ansatze(
                 "ansatz_name": name,
                 "ansatz_options": options,
                 "optimizer": asdict(opt_config),
-                "shots": shots,
+                "shots": getattr(estimator, 'shots', None),
             }
             cache_key = deterministic_hash(payload)
             cached = read_json_cache(cache_dir, cache_key)
@@ -219,7 +217,8 @@ def evaluate_noise_levels(
     results = []
     for level in noise_levels:
         noise_model = simple_depolarising_noise(p_one=level, p_two=2 * level)
-        sampler = get_default_sampler(shots=shots, noise_model=noise_model, seed=seed)
+        backend_config = {"name": "local_simulator", "shots": shots, "seed": seed, "noise_model": noise_model}
+        _, sampler = get_provider(backend_config)
         sample_result = sampler.run([(circuit_measure, [])]).result()
         first = sample_result[0]
         key = next(iter(first.data.keys()))
@@ -247,7 +246,11 @@ def run_phase2_benchmark(cache_dir: Optional[Path] = None, use_cache: bool = Tru
     ]
     if cache_dir is None:
         cache_dir = Path(".benchmark_cache")
-    results = benchmark_ansatze(qubo_builder, configs, make_optimizer_config, cache_dir=cache_dir, use_cache=use_cache)
+    
+    backend_config = {"name": "local_simulator", "shots": 4096, "seed": 123}
+    estimator, _ = get_provider(backend_config)
+
+    results = benchmark_ansatze(qubo_builder, configs, make_optimizer_config, estimator, cache_dir=cache_dir, use_cache=use_cache)
     summarize_results(results)
 
     init_summary = analyse_initialisations(num_qubits=qubo_builder.build().num_variables)

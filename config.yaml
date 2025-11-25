@@ -1,0 +1,75 @@
+# Configuration for the Quantum Portfolio Optimizer
+
+portfolio:
+  tickers: ["AAPL", "GOOG", "MSFT", "AMZN"]
+  start_date: "2022-01-01"
+  end_date: "2023-01-01"
+
+# Algorithm settings
+# Available algorithms: "vqe", "qaoa" (to be implemented)
+algorithm:
+  name: "vqe"
+  settings:
+    ansatz: "RealAmplitudes"
+    reps: 2
+
+# Backend settings
+# Available backends: "local_simulator", "ibm_quantum"
+backend:
+  name: "local_simulator"
+  shots: 1024
+  seed: 42
+
+# IBM Quantum backend configuration (used when backend.name = "ibm_quantum")
+# Requires: pip install .[ibm] and QE_TOKEN environment variable
+ibm_quantum:
+  # Device name - check available backends at quantum.ibm.com
+  # Common options: ibm_brisbane (127q), ibm_kyoto (127q), ibm_osaka (127q)
+  device: "ibm_brisbane"
+
+  # Channel: "ibm_quantum" (free tier) or "ibm_cloud" (premium)
+  channel: "ibm_quantum"
+
+  # Instance in format "hub/group/project" (optional, for specific access)
+  # instance: "ibm-q/open/main"
+
+  # Session mode - keeps jobs prioritized for iterative algorithms like VQE
+  use_session: true
+  session_max_time: 28800  # 8 hours in seconds
+
+  # Execution settings
+  shots: 4096
+  optimization_level: 3  # 0-3, higher = more optimization
+
+  # Error mitigation settings
+  error_mitigation:
+    # Resilience level: 0=none, 1=basic (twirling+DD), 2=advanced (includes ZNE)
+    resilience_level: 1
+
+    # Dynamical decoupling - suppresses decoherence during idle times
+    dynamical_decoupling: true
+    dd_sequence: "XpXm"  # Options: "XX", "XY4", "XpXm"
+
+    # Pauli twirling - randomizes noise for better mitigation
+    twirling_enabled: true
+
+    # Zero-Noise Extrapolation (ZNE) - requires resilience_level >= 2
+    zne_enabled: false
+    zne_noise_factors: [1, 3, 5]
+    zne_extrapolator: "exponential"  # Options: "linear", "exponential", "polynomial"
+
+# Classical optimizer settings for VQE/QAOA
+optimizer:
+  name: "differential_evolution"
+  maxiter: 100
+
+# Risk model settings
+# Available models: "markowitz", "cvar" (to be implemented)
+risk_model:
+  name: "markowitz"
+  parameters:
+    risk_factor: 0.5 # Corresponds to 'q' in the Markowitz model
+
+# Legacy error mitigation settings (see ibm_quantum.error_mitigation for full options)
+# error_mitigation:
+#   zne: false

@@ -15,15 +15,22 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=[
-        "qiskit[all]>=1.0.0",
-        "qiskit-aer>=0.13.0",
+        "qiskit>=1.0.0",
         "numpy>=1.24.0",
         "scipy>=1.10.0",
         "pandas>=2.0.0",
         "matplotlib>=3.7.0",
         "scikit-learn>=1.3.0",
+        "PyYAML>=6.0",
+        "yfinance>=0.2.0",
+        "click>=8.0",
     ],
-    extras_require={"dev": ["pytest>=7.0.0"]},
+    extras_require={
+        "dev": ["pytest>=7.0.0"],
+        "noise": ["qiskit-aer>=0.14.0"],
+        "ibm": ["qiskit-ibm-runtime>=0.20.0"],
+        "all": ["qiskit-aer>=0.14.0", "qiskit-ibm-runtime>=0.20.0"],
+    },
     python_requires=">=3.9",
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -31,4 +38,9 @@ setup(
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: Physics",
     ],
+    entry_points={
+        'console_scripts': [
+            'qpo=quantum_portfolio_optimizer.cli:cli',
+        ],
+    },
 )

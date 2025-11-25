@@ -3,6 +3,7 @@ import numpy as np
 from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
 from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO
 from quantum_portfolio_optimizer.core.vqe_solver import PortfolioVQESolver
+from quantum_portfolio_optimizer.simulation.provider import get_provider
 
 
 def test_vqe_solver_runs_on_small_qubo():
@@ -18,7 +19,11 @@ def test_vqe_solver_runs_on_small_qubo():
         max_investment=1.0,
     ).build()
 
+    backend_config = {"name": "local_simulator", "shots": None, "seed": 1}
+    estimator, _ = get_provider(backend_config)
+
     solver = PortfolioVQESolver(
+        estimator=estimator,
         ansatz_options={"reps": 1},
         optimizer_config=DifferentialEvolutionConfig(bounds=[(-1.0, 1.0)], maxiter=5, popsize=6, seed=1),
         seed=1,
@@ -51,7 +56,11 @@ def test_progress_callback_receives_updates():
     def callback(evaluation: int, energy: float, best: float) -> None:
         progress_updates.append((evaluation, energy, best))
 
+    backend_config = {"name": "local_simulator", "shots": None, "seed": 2}
+    estimator, _ = get_provider(backend_config)
+
     solver = PortfolioVQESolver(
+        estimator=estimator,
         ansatz_options={"reps": 1},
         optimizer_config=DifferentialEvolutionConfig(bounds=[(-1.0, 1.0)], maxiter=3, popsize=4, seed=2),
         seed=2,

@@ -7,7 +7,7 @@ from typing import Callable, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 from qiskit import QuantumCircuit
-from qiskit.circuit.library import EfficientSU2, RealAmplitudes
+from qiskit.circuit.library import efficient_su2, real_amplitudes
 
 
 def build_real_amplitudes(
@@ -15,8 +15,8 @@ def build_real_amplitudes(
     reps: int = 3,  # 3 layers as per paper
     entanglement: str | Sequence[Sequence[int]] = "reverse_linear",  # Reverse linear from paper
     insert_barriers: bool = False,
-) -> RealAmplitudes:
-    return RealAmplitudes(num_qubits=num_qubits, reps=reps, entanglement=entanglement, insert_barriers=insert_barriers)
+) -> QuantumCircuit:
+    return real_amplitudes(num_qubits=num_qubits, reps=reps, entanglement=entanglement, insert_barriers=insert_barriers)
 
 
 def build_cyclic_ansatz(num_qubits: int, reps: int = 1) -> QuantumCircuit:
@@ -34,8 +34,8 @@ def build_cyclic_ansatz(num_qubits: int, reps: int = 1) -> QuantumCircuit:
     return qc
 
 
-def build_efficient_su2(num_qubits: int, reps: int = 1, entanglement: str = "linear") -> EfficientSU2:
-    return EfficientSU2(num_qubits=num_qubits, reps=reps, entanglement=entanglement)
+def build_efficient_su2(num_qubits: int, reps: int = 1, entanglement: str = "linear") -> QuantumCircuit:
+    return efficient_su2(num_qubits=num_qubits, reps=reps, entanglement=entanglement)
 
 
 def get_ansatz(name: str, num_qubits: int, **kwargs) -> QuantumCircuit:
