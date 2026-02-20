@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import statistics
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
@@ -14,6 +15,7 @@ from ..core.ansatz_library import (
     generate_ansatz_family,
     get_ansatz,
 )
+from ..core.optimizer_interface import DifferentialEvolutionConfig
 from ..core.qubo_formulation import PortfolioQUBO
 from ..core.vqe_solver import PortfolioVQESolver
 from ..data.sample_datasets import generate_synthetic_dataset

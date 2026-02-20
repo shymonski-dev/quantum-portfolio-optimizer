@@ -6,7 +6,7 @@ portfolio:
   end_date: "2023-01-01"
 
 # Algorithm settings
-# Available algorithms: "vqe", "qaoa" (to be implemented)
+# Available algorithms: "vqe", "qaoa"
 algorithm:
   name: "vqe"
   settings:
@@ -67,7 +67,7 @@ optimizer:
   maxiter: 100
 
 # Risk model settings
-# Available models: "markowitz", "cvar" (to be implemented)
+# Available models: "markowitz", "cvar"
 risk_model:
   name: "markowitz"
   parameters:

@@ -90,7 +90,7 @@ def mip_baseline(
         budget: Total portfolio weight sum (typically 1.0)
         num_assets: Exactly this many assets to select (K)
         bounds: (min_weight, max_weight) per asset when selected
-        risk_aversion: Risk aversion parameter (0 = return only, 1 = risk only)
+        risk_aversion: Risk multiplier for variance term
         risk_free_rate: Risk-free rate for Sharpe ratio calculation
 
     Returns:
@@ -115,7 +115,7 @@ def mip_baseline(
         sigma_sub = sigma[np.ix_(selected_indices, selected_indices)]
 
         def objective(w):
-            return risk_aversion * (w @ sigma_sub @ w) - (1 - risk_aversion) * (mu_sub @ w)
+            return risk_aversion * (w @ sigma_sub @ w) - (mu_sub @ w)
 
         constraints = ({"type": "eq", "fun": lambda w: np.sum(w) - budget},)
         bounds_list = [(bounds[0], bounds[1])] * k
@@ -135,7 +135,7 @@ def mip_baseline(
         return full_weights
 
     def _portfolio_cost(weights: np.ndarray) -> float:
-        return risk_aversion * (weights @ sigma @ weights) - (1 - risk_aversion) * (mu @ weights)
+        return risk_aversion * (weights @ sigma @ weights) - (mu @ weights)
 
     ENUMERATE_THRESHOLD = 15
 

@@ -252,6 +252,7 @@ def get_ibm_quantum_backend(config: Dict[str, Any]) -> Tuple[Any, Any]:
             - device: IBM Quantum backend name (required)
             - channel: 'ibm_quantum' or 'ibm_cloud' (default: 'ibm_quantum')
             - instance: 'hub/group/project' format (optional)
+            - token: IBM Quantum API token (optional, falls back to environment)
             - use_session: Whether to use Session mode (default: True)
             - session_max_time: Max session time in seconds (default: 28800)
             - shots: Number of shots (default: 4096)
@@ -309,8 +310,10 @@ def get_ibm_quantum_backend(config: Dict[str, Any]) -> Tuple[Any, Any]:
         error_mitigation=error_mitigation,
     )
 
-    # Get API token
-    token = os.environ.get("QE_TOKEN") or os.environ.get("IBM_QUANTUM_TOKEN")
+    # Get API token from config first, then environment
+    token = config.get("token")
+    if not token:
+        token = os.environ.get("QE_TOKEN") or os.environ.get("IBM_QUANTUM_TOKEN")
 
     # Connect to IBM Quantum
     service = _get_runtime_service(token=token, channel=channel, instance=instance)

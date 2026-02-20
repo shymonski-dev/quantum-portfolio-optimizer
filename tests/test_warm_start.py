@@ -257,6 +257,26 @@ class TestWarmStartQAOA:
 
         assert len(result.initial_parameters) == 2
 
+    def test_xy_mixer_initialization_path(self):
+        """Exchange mixer warm start should return valid parameters."""
+        qubo_linear = np.array([0.1, 0.2, 0.3, 0.15])
+        qubo_quadratic = np.eye(4) * 0.05
+        layers = 2
+
+        result = warm_start_qaoa(
+            qubo_linear=qubo_linear,
+            qubo_quadratic=qubo_quadratic,
+            layers=layers,
+            mixer_type="xy",
+            config=WarmStartConfig(seed=42),
+        )
+
+        assert len(result.initial_parameters) == 2 * layers
+        gammas = result.initial_parameters[::2]
+        betas = result.initial_parameters[1::2]
+        assert all(0 <= g <= 2 * np.pi for g in gammas)
+        assert all(0 <= b <= np.pi for b in betas)
+
 
 class TestGetBinaryInitialState:
     """Test binary state conversion."""

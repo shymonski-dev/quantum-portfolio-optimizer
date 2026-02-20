@@ -218,7 +218,40 @@ class TestIBMProviderWithMockedRuntime:
 
         mock_runtime["session_instance"].close.assert_called_once()
         assert ibm_provider._active_session is None
-        assert ibm_provider._session_backend is None
+
+    def test_config_token_takes_precedence_over_environment(self, mock_runtime, monkeypatch):
+        """Configuration token should be used before environment token."""
+        from quantum_portfolio_optimizer.simulation import ibm_provider
+
+        # Reset session state
+        ibm_provider._active_session = None
+        ibm_provider._session_backend = None
+
+        captured = {}
+
+        def fake_get_runtime_service(token=None, channel="ibm_quantum", instance=None):
+            captured["token"] = token
+            captured["channel"] = channel
+            captured["instance"] = instance
+            return mock_runtime["service_instance"]
+
+        monkeypatch.setattr(ibm_provider, "_get_runtime_service", fake_get_runtime_service)
+        monkeypatch.setenv("QE_TOKEN", "env-token")
+
+        config = {
+            "device": "ibm_test",
+            "channel": "ibm_quantum",
+            "token": "config-token",
+            "shots": 1024,
+        }
+
+        with patch.object(ibm_provider, "IBM_RUNTIME_AVAILABLE", True):
+            estimator, sampler = ibm_provider.get_ibm_quantum_backend(config)
+
+        assert estimator is not None
+        assert sampler is not None
+        assert captured["token"] == "config-token"
+        assert captured["channel"] == "ibm_quantum"
 
 
 class TestErrorMitigationConfig:

@@ -7,8 +7,8 @@ README = (BASE_DIR / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="local-quantum-portfolio-optimizer",
-    version="0.1.0",
-    description="Local quantum portfolio optimisation toolkit (Phase 1)",
+    version="0.2.0",
+    description="Local quantum portfolio optimization toolkit",
     long_description=README,
     long_description_content_type="text/markdown",
     author="Local Quantum Lab",

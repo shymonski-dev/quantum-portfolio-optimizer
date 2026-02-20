@@ -274,6 +274,7 @@ def warm_start_qaoa(
                 beta_p = (np.pi / 4) * (1.0 - 0.5 * t)
                 params.extend([gamma_p, beta_p])
             initial_parameters = np.clip(params, 0, 2 * np.pi)
+            gamma_reference = float(initial_parameters[0]) if len(initial_parameters) else 0.0
         else:
             # Initialize gamma based on energy scale
             # Optimal gamma is typically O(1/energy_scale)
@@ -296,6 +297,7 @@ def warm_start_qaoa(
 
                 # Beta decreases with depth (annealing-like schedule)
                 initial_parameters[2 * p + 1] = beta_initial * (1.0 - 0.3 * t)
+            gamma_reference = gamma_initial
 
         # Add small noise for symmetry breaking
         if config.noise_scale > 0:
@@ -323,7 +325,7 @@ def warm_start_qaoa(
 
         logger.info(
             f"QAOA warm start: {2 * layers} parameters initialized "
-            f"(energy_scale={energy_scale:.4f}, gamma_init={gamma_initial:.4f})"
+            f"(energy_scale={energy_scale:.4f}, gamma_init={gamma_reference:.4f})"
         )
 
         return WarmStartResult(

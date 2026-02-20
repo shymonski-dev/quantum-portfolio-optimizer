@@ -75,7 +75,9 @@ def optimize():
     """Run portfolio optimization."""
     try:
         # Get form data
-        data = request.json
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({'error': 'Invalid request body. Expected JSON object.'}), 400
         tickers = [t.strip().upper() for t in data.get('tickers', 'AAPL,GOOG,MSFT,AMZN').split(',')]
         start_date = data.get('start_date', '2023-01-01')
         end_date = data.get('end_date', '2024-01-01')
@@ -192,18 +194,6 @@ def optimize():
             else:
                 instance_value = ibm_instance or None
 
-            # Set credentials as environment variables for the provider
-            os.environ['QE_TOKEN'] = ibm_api_key
-            if instance_value:
-                os.environ['IBM_INSTANCE'] = instance_value
-            else:
-                os.environ.pop('IBM_INSTANCE', None)
-
-            if ibm_channel == 'ibm_cloud':
-                os.environ['IBM_CLOUD_CRN'] = instance_value or ''
-            else:
-                os.environ.pop('IBM_CLOUD_CRN', None)
-
             raw_noise = data.get('zne_noise_factors', '1,3,5')
             if isinstance(raw_noise, str):
                 try:
@@ -223,6 +213,7 @@ def optimize():
                 "device": ibm_device,
                 "channel": ibm_channel,
                 "instance": instance_value,
+                "token": ibm_api_key,
                 "shots": 4096,
                 "optimization_level": 3,
                 "use_session": True,
@@ -373,6 +364,7 @@ def optimize():
                 seed=42,
                 progress_callback=progress_callback,
                 extraction_shots=1024,
+                zne_config=solver_zne_config,
             )
             logger.info(f"Running VQE with {ansatz_type} ansatz, reps={reps}")
 
@@ -592,4 +584,7 @@ if __name__ == '__main__':
     print("  Quantum Portfolio Optimizer")
     print("  Open http://localhost:8080 in your browser")
     print("="*60 + "\n")
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    debug_mode = os.environ.get('FLASK_DEBUG', '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    host = os.environ.get('FLASK_HOST', '127.0.0.1')
+    port = int(os.environ.get('PORT', '8080'))
+    app.run(debug=debug_mode, host=host, port=port)

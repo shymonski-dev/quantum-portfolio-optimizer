@@ -316,6 +316,25 @@ class TestMIPBaseline:
         # take different solver paths, producing numerically distinct optima.
         assert mip_cost == pytest.approx(mkw_cost, abs=1e-2)
 
+    def test_mip_matches_markowitz_for_high_risk_multiplier(self):
+        """With num_assets == n, both baselines should stay aligned for risk multipliers > 1."""
+        mu, cov = _make_problem(6)
+        risk_multiplier = 2.0
+
+        mip_result = mip_baseline(
+            mu, cov, budget=1.0, num_assets=6, risk_aversion=risk_multiplier
+        )
+        mkw_result = markowitz_baseline(
+            mu, cov, budget=1.0, risk_aversion=risk_multiplier
+        )
+
+        assert mip_result.success
+        assert mkw_result.success
+
+        mip_cost = risk_multiplier * mip_result.variance - mip_result.expected_return
+        mkw_cost = risk_multiplier * mkw_result.variance - mkw_result.expected_return
+        assert mip_cost == pytest.approx(mkw_cost, abs=1e-2)
+
     def test_mip_invalid_num_assets(self):
         """num_assets > n should raise ValueError."""
         mu, cov = _make_problem(5)

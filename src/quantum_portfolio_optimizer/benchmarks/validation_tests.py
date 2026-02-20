@@ -10,6 +10,7 @@ import numpy as np
 from ..core.qubo_formulation import PortfolioQUBO
 from ..core.vqe_solver import PortfolioVQESolver
 from ..data.sample_datasets import generate_synthetic_dataset
+from ..simulation.provider import get_provider
 
 
 @dataclass
@@ -34,7 +35,8 @@ def validate_small_instance(seed: Optional[int] = None) -> ValidationReport:
         max_investment=1.0,
     )
     qubo = builder.build()
-    solver = PortfolioVQESolver(seed=seed)
+    estimator, _ = get_provider({"name": "local_simulator", "shots": None, "seed": seed})
+    solver = PortfolioVQESolver(estimator=estimator, seed=seed)
     result = solver.solve(qubo)
 
     feasible = result.optimal_value <= 10.0  # simple sanity bound for tests
