@@ -38,7 +38,7 @@ setup(
         "Source": "https://github.com/shymonski-dev/quantum-portfolio-optimizer",
         "Documentation": "https://github.com/shymonski-dev/quantum-portfolio-optimizer#readme",
     },
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/shymonski-dev/quantum-portfolio-optimizer/actions/workflows/tests.yml/badge.svg)](https://github.com/shymonski-dev/quantum-portfolio-optimizer/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Qiskit 2.x](https://img.shields.io/badge/Qiskit-2.x-6929c4.svg)](https://qiskit.org)
 
 A quantum-classical hybrid application for portfolio optimization using Variational Quantum Eigensolver (VQE) and Quantum Approximate Optimization Algorithm (QAOA). Supports local simulation and real IBM Quantum hardware, with up to 25 assets, ESG constraints, CVaR risk objectives, and integer-constrained classical baselines.
@@ -65,7 +65,7 @@ Both QAOA variants support the **CVaR objective** (`cvar_alpha` ∈ (0,1]): eval
 - **Error Mitigation (IBM)**: Dynamical decoupling, Pauli twirling, managed ZNE (Resilience Levels 0–2)
 - **Quality Scoring**: Automated Sharpe-feasibility-return composite grade (A–F)
 - **Web Interface**: Dark-themed Flask UI with convergence charts and measurement statistics
-- **331 Tests**: Full unit and integration coverage; 100% passing on Python 3.9–3.12
+- **331 Tests**: Full unit and integration coverage; 100% passing on Python 3.10–3.12
 
 ## Installation
 
@@ -168,7 +168,7 @@ quantum_portfolio_optimizer/
 │   └── postprocessing/
 │       └── quality_scorer.py        # A–F composite quality score
 ├── tests/                           # 331 tests, 100% passing
-├── .github/workflows/               # CI: Python 3.9–3.12 matrix
+├── .github/workflows/               # CI: Python 3.10–3.12 matrix
 ├── config.yaml
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
@@ -240,7 +240,7 @@ Current status: **331 passed, 1 skipped** on Python 3.12 / macOS (February 2026)
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.10+
 - Qiskit >= 2.3.0
 - Flask, NumPy, Pandas, SciPy, scikit-learn
 - yfinance
