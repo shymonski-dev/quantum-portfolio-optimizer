@@ -953,7 +953,7 @@
             const content = document.getElementById('advanced-settings');
             const arrow = document.getElementById('settings-arrow');
             content.classList.toggle('show');
-            arrow.innerHTML = content.classList.contains('show') ? '&#9660;' : '&#9654;';
+            arrow.textContent = content.classList.contains('show') ? '▼' : '▶';
         }
 
         function toggleIBMSettings() {
@@ -1009,6 +1009,115 @@
         function toggleQualityDetails() {
             const details = document.getElementById('quality-details');
             details.classList.toggle('show');
+        }
+
+        function clearElement(element) {
+            while (element.firstChild) {
+                element.removeChild(element.firstChild);
+            }
+        }
+
+        function buildAllocationChart(weights) {
+            const chartDiv = document.getElementById('allocation-chart');
+            clearElement(chartDiv);
+            const fragment = document.createDocumentFragment();
+
+            for (const [ticker, weightValue] of Object.entries(weights || {})) {
+                const weight = Number(weightValue) || 0;
+                const width = Math.max(0, Math.min(100, Math.max(weight, 5)));
+                const isSelected = weight > 0;
+
+                const row = document.createElement('div');
+                row.className = 'bar-item';
+
+                const label = document.createElement('span');
+                label.className = 'bar-label';
+                label.textContent = ticker;
+
+                const container = document.createElement('div');
+                container.className = 'bar-container';
+
+                const bar = document.createElement('div');
+                bar.className = isSelected ? 'bar' : 'bar excluded';
+                bar.style.width = width + '%';
+                bar.textContent = weight + '%';
+
+                container.appendChild(bar);
+                row.appendChild(label);
+                row.appendChild(container);
+                fragment.appendChild(row);
+            }
+
+            chartDiv.appendChild(fragment);
+        }
+
+        function buildSelectedAssets(selectedAssets) {
+            const selectedDiv = document.getElementById('selected-assets');
+            clearElement(selectedDiv);
+            const fragment = document.createDocumentFragment();
+
+            (selectedAssets || []).forEach(asset => {
+                const badge = document.createElement('span');
+                badge.className = 'selected-badge';
+                badge.textContent = asset;
+                fragment.appendChild(badge);
+            });
+
+            selectedDiv.appendChild(fragment);
+        }
+
+        function setConvergenceStatus(convergence) {
+            const statusEl = document.getElementById('convergence-status');
+            clearElement(statusEl);
+
+            if (!convergence) {
+                return;
+            }
+
+            if (convergence.converged) {
+                const indicator = document.createElement('span');
+                indicator.className = 'converged';
+                indicator.textContent = '✓ Optimization converged';
+                statusEl.appendChild(indicator);
+                return;
+            }
+
+            statusEl.textContent = 'Optimization completed (' + convergence.history.length + ' evaluations)';
+        }
+
+        function buildMeasurementsChart(measurements) {
+            const chartDiv = document.getElementById('measurements-chart');
+            clearElement(chartDiv);
+
+            const fragment = document.createDocumentFragment();
+            (measurements.top_solutions || []).forEach(solution => {
+                const row = document.createElement('div');
+                row.className = 'measurement-bar';
+
+                const label = document.createElement('span');
+                label.className = 'measurement-label';
+                label.textContent = solution.bitstring;
+
+                const container = document.createElement('div');
+                container.className = 'measurement-bar-container';
+
+                const fill = document.createElement('div');
+                fill.className = 'measurement-bar-fill';
+                const probability = Number(solution.probability) || 0;
+                fill.style.width = Math.max(0, Math.min(100, probability)) + '%';
+
+                const probabilityLabel = document.createElement('span');
+                probabilityLabel.className = 'measurement-prob';
+                probabilityLabel.textContent = probability + '%';
+
+                container.appendChild(fill);
+                row.appendChild(label);
+                row.appendChild(container);
+                row.appendChild(probabilityLabel);
+                fragment.appendChild(row);
+            });
+
+            chartDiv.appendChild(fragment);
         }
 
         function updateQubitCount() {
@@ -1187,28 +1296,9 @@
                 document.getElementById('optimal-value').textContent = result.optimal_value;
                 document.getElementById('iterations').textContent = result.iterations;
 
-                // Update allocation chart
-                const chartDiv = document.getElementById('allocation-chart');
-                chartDiv.innerHTML = '';
-                for (const [ticker, weight] of Object.entries(result.weights)) {
-                    const isSelected = weight > 0;
-                    chartDiv.innerHTML += `
-                        <div class="bar-item">
-                            <span class="bar-label">${ticker}</span>
-                            <div class="bar-container">
-                                <div class="bar ${isSelected ? '' : 'excluded'}" style="width: ${Math.max(weight, 5)}%">
-                                    ${weight}%
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // Update selected assets
-                const selectedDiv = document.getElementById('selected-assets');
-                selectedDiv.innerHTML = result.selected_assets.map(a =>
-                    `<span class="selected-badge">${a}</span>`
-                ).join('');
+                // Update allocation chart and selected assets
+                buildAllocationChart(result.weights);
+                buildSelectedAssets(result.selected_assets);
 
                 // Update comparison table
                 if (result.classical_baseline) {
@@ -1265,26 +1355,14 @@
                 // Draw convergence chart
                 if (result.convergence) {
                     drawConvergenceChart(result.convergence.history, result.convergence.best_history);
-                    const statusEl = document.getElementById('convergence-status');
-                    statusEl.innerHTML = result.convergence.converged
-                        ? '<span class="converged">&#10003; Optimization converged</span>'
-                        : 'Optimization completed (' + result.convergence.history.length + ' evaluations)';
+                    setConvergenceStatus(result.convergence);
                 }
 
                 // Display measurement statistics
                 if (result.measurements) {
                     document.getElementById('measurements-panel').style.display = 'block';
                     document.getElementById('total-shots').textContent = result.measurements.total_shots;
-                    const chartDiv = document.getElementById('measurements-chart');
-                    chartDiv.innerHTML = result.measurements.top_solutions.map(sol => `
-                        <div class="measurement-bar">
-                            <span class="measurement-label">${sol.bitstring}</span>
-                            <div class="measurement-bar-container">
-                                <div class="measurement-bar-fill" style="width: ${sol.probability}%"></div>
-                            </div>
-                            <span class="measurement-prob">${sol.probability}%</span>
-                        </div>
-                    `).join('');
+                    buildMeasurementsChart(result.measurements);
                 } else {
                     document.getElementById('measurements-panel').style.display = 'none';
                 }

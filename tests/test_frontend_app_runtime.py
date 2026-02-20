@@ -116,3 +116,11 @@ def test_optimize_passes_gate_folding_config_to_variational_solver(monkeypatch):
     assert zne_config["zne_gate_folding"] is True
     assert zne_config["zne_noise_factors"] == [1.0, 3.0, 5.0]
     assert zne_config["zne_extrapolator"] == "linear"
+
+
+def test_template_script_avoids_inner_html_usage():
+    root = Path(__file__).resolve().parents[1]
+    template_path = root / "frontend" / "templates" / "index.html"
+    content = template_path.read_text(encoding="utf-8")
+
+    assert "innerHTML" not in content

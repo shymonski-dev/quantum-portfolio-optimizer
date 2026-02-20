@@ -29,7 +29,7 @@ esg_constraints: supported
 mip_baseline: supported
 zne_local: supported
 max_supported_assets: 25
-test_count: 328
+test_count: 331
 ```
 
 ### Supported Algorithms
@@ -65,7 +65,7 @@ Both QAOA variants support the **CVaR objective** (`cvar_alpha` ∈ (0,1]): eval
 - **Error Mitigation (IBM)**: Dynamical decoupling, Pauli twirling, managed ZNE (Resilience Levels 0–2)
 - **Quality Scoring**: Automated Sharpe-feasibility-return composite grade (A–F)
 - **Web Interface**: Dark-themed Flask UI with convergence charts and measurement statistics
-- **328 Tests**: Full unit and integration coverage; 100% passing on Python 3.9–3.12
+- **331 Tests**: Full unit and integration coverage; 100% passing on Python 3.9–3.12
 
 ## Installation
 
@@ -167,7 +167,7 @@ quantum_portfolio_optimizer/
 │   │   └── classical_baseline.py    # Markowitz + MIP integer baseline
 │   └── postprocessing/
 │       └── quality_scorer.py        # A–F composite quality score
-├── tests/                           # 328 tests, 100% passing
+├── tests/                           # 331 tests, 100% passing
 ├── .github/workflows/               # CI: Python 3.9–3.12 matrix
 ├── config.yaml
 ├── CHANGELOG.md
@@ -236,7 +236,7 @@ pytest tests/ --cov=src/
 pytest tests/test_qaoa_solver.py -v
 ```
 
-Current status: **328 passed, 1 skipped** on Python 3.12 / macOS (February 2026).
+Current status: **331 passed, 1 skipped** on Python 3.12 / macOS (February 2026).
 
 ## Requirements
 
