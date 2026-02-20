@@ -7,11 +7,11 @@ comparing quantum results against classical baselines.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 
-from quantum_portfolio_optimizer.exceptions import InvalidWeightsError, ScoringError
+from quantum_portfolio_optimizer.exceptions import InvalidWeightsError
 
 
 @dataclass
@@ -199,10 +199,6 @@ def _score_vs_classical(
     50 = quantum matches classical
     0 = quantum significantly worse than classical
     """
-    # Calculate relative performance
-    sharpe_diff = quantum_sharpe - classical_sharpe
-    return_diff = quantum_return - classical_return
-
     # Sharpe comparison (weight: 60%)
     if classical_sharpe != 0:
         sharpe_ratio = quantum_sharpe / classical_sharpe

@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Sequence
 
 import numpy as np
 from qiskit import QuantumCircuit
 
 from quantum_portfolio_optimizer.benchmarks.classical_baseline import (
-    BaselineResult,
     markowitz_baseline,
 )
 from quantum_portfolio_optimizer.exceptions import WarmStartError

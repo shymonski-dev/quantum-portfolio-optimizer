@@ -9,7 +9,6 @@ import pandas as pd
 import yfinance as yf
 
 from quantum_portfolio_optimizer.exceptions import (
-    DataError,
     InsufficientDataError,
     InvalidDateRangeError,
     InvalidTickerError,
@@ -65,7 +64,7 @@ def validate_inputs(tickers: List[str], start_date: str, end_date: str) -> None:
     except ValueError:
         raise InvalidDateRangeError(
             start_date, end_date,
-            f"Invalid start date format. Use YYYY-MM-DD format."
+            "Invalid start date format. Use YYYY-MM-DD format."
         )
 
     try:
@@ -73,7 +72,7 @@ def validate_inputs(tickers: List[str], start_date: str, end_date: str) -> None:
     except ValueError:
         raise InvalidDateRangeError(
             start_date, end_date,
-            f"Invalid end date format. Use YYYY-MM-DD format."
+            "Invalid end date format. Use YYYY-MM-DD format."
         )
 
     if start >= end:

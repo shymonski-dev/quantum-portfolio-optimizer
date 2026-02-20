@@ -322,6 +322,7 @@ class TestScoreSolution:
 
         # Feasibility should be 100, so feasibility-weighted score should be higher
         assert result_feasibility.total_score == pytest.approx(100.0)
+        assert result_feasibility.total_score > result_default.total_score
 
     def test_with_classical_baseline(self):
         """Score should incorporate classical baseline when provided."""

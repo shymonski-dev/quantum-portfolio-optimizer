@@ -13,7 +13,6 @@ import numpy as np
 from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
 
-from ..simulation.provider import get_provider
 from ..simulation.zne import fold_circuit, zne_extrapolate
 from .optimizer_interface import DifferentialEvolutionConfig, run_differential_evolution
 from .qubo_formulation import QUBOProblem

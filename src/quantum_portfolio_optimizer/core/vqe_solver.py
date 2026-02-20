@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from ..simulation.provider import get_provider
 from ..simulation.zne import fold_circuit, zne_extrapolate
 from .ansatz_library import analyse_circuit, get_ansatz, initialise_parameters
 from .optimizer_interface import DifferentialEvolutionConfig, run_differential_evolution

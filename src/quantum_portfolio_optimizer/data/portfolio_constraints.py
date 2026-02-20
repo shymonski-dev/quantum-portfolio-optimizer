@@ -13,18 +13,17 @@ Migration guide:
 
 import warnings
 
+from quantum_portfolio_optimizer.core.constraints import (
+    BudgetConstraint,
+    AllocationBounds,
+    evaluate_constraints,
+)
+
 warnings.warn(
     "quantum_portfolio_optimizer.data.portfolio_constraints is deprecated. "
     "Use quantum_portfolio_optimizer.core.constraints instead.",
     DeprecationWarning,
     stacklevel=2,
-)
-
-# Re-export from new location for backward compatibility
-from quantum_portfolio_optimizer.core.constraints import (
-    BudgetConstraint,
-    AllocationBounds,
-    evaluate_constraints,
 )
 
 __all__ = ["BudgetConstraint", "AllocationBounds", "evaluate_constraints"]

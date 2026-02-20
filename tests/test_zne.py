@@ -2,8 +2,6 @@
 import numpy as np
 import pytest
 from qiskit import QuantumCircuit
-from qiskit.circuit.library import RZGate
-from qiskit.primitives import StatevectorSampler
 from quantum_portfolio_optimizer.simulation.zne import (
     fold_circuit,
     zne_evaluate,

@@ -1,4 +1,3 @@
-import numpy as np
 
 from quantum_portfolio_optimizer.core.ansatz_library import (
     analyse_circuit,

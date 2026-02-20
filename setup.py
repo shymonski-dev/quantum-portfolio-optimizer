@@ -24,6 +24,7 @@ setup(
         "PyYAML>=6.0",
         "yfinance>=0.2.0",
         "click>=8.0",
+        "flask>=2.3.0",
     ],
     extras_require={
         "dev": ["pytest>=7.0.0", "pytest-cov>=4.0", "ruff>=0.1.0"],

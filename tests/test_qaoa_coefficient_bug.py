@@ -11,9 +11,7 @@ These tests will FAIL before the fix and PASS after.
 
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
-from qiskit import QuantumCircuit
-from qiskit.circuit import Parameter
+from unittest.mock import MagicMock
 
 from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO, QUBOProblem
 from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver

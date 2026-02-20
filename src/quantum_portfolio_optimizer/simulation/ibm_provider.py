@@ -12,13 +12,12 @@ from __future__ import annotations
 import os
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple
 
 from quantum_portfolio_optimizer.exceptions import (
     BackendError,
     IBMAuthenticationError,
     IBMBackendNotFoundError,
-    IBMSessionError,
 )
 
 logger = logging.getLogger(__name__)
@@ -347,7 +346,7 @@ def get_ibm_quantum_backend(config: Dict[str, Any]) -> Tuple[Any, Any]:
         logger.info("Created EstimatorV2 and SamplerV2 in job mode")
 
     # Log error mitigation settings
-    logger.info(f"Error mitigation settings:")
+    logger.info("Error mitigation settings:")
     logger.info(f"  - Resilience level: {error_mitigation.resilience_level}")
     logger.info(f"  - Dynamical decoupling: {error_mitigation.dynamical_decoupling} ({error_mitigation.dd_sequence})")
     logger.info(f"  - Twirling: {error_mitigation.twirling_enabled}")

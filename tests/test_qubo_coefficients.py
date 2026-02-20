@@ -278,6 +278,9 @@ class TestQUBOConstraintSatisfaction:
         # Low risk aversion should lean toward asset 0 (higher return)
         # High risk aversion should lean toward asset 1 (lower variance)
         # Note: Exact result depends on coefficient scaling
+        valid_bitstrings = [[0, 0], [1, 0], [0, 1], [1, 1]]
+        assert low_risk_optimal in valid_bitstrings
+        assert high_risk_optimal in valid_bitstrings
 
 
 class TestQUBONumericalStability:

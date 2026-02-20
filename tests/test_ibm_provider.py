@@ -1,6 +1,6 @@
 """Tests for IBM Quantum provider module with mocked qiskit-ibm-runtime."""
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 import pytest
 
 from quantum_portfolio_optimizer.exceptions import (
@@ -17,7 +17,6 @@ class TestIBMProviderWithoutRuntime:
         """Should raise BackendError when qiskit-ibm-runtime not installed."""
         with patch.dict("sys.modules", {"qiskit_ibm_runtime": None}):
             # Need to reload the module to pick up the mocked import
-            import importlib
             from quantum_portfolio_optimizer.simulation import ibm_provider
 
             # Force IBM_RUNTIME_AVAILABLE to False

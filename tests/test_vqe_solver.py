@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
 from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO

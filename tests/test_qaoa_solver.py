@@ -291,7 +291,6 @@ class TestCircuitDepthEstimation:
 class TestCVaRQAOA:
     def test_cvar_alpha_one_is_expectation(self):
         """alpha=1.0 must reproduce the existing weighted-average behaviour."""
-        import numpy as np
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
         from quantum_portfolio_optimizer.simulation.provider import get_provider
         _, sampler = get_provider({"name": "local_simulator", "shots": 256, "seed": 42})
@@ -386,7 +385,6 @@ class TestXYMixerQAOA:
 
     def test_dicke_state_correct_hamming_weight(self):
         """Statevector of Dicke(n=4, k=2) has support only on weight-2 bitstrings."""
-        import numpy as np
         from qiskit import QuantumCircuit
         from qiskit.quantum_info import Statevector
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
@@ -406,7 +404,6 @@ class TestXYMixerQAOA:
 
     def test_dicke_state_uniform_superposition(self):
         """All C(4,2)=6 weight-2 states have equal probability."""
-        import numpy as np
         from qiskit import QuantumCircuit
         from qiskit.quantum_info import Statevector
         from math import comb

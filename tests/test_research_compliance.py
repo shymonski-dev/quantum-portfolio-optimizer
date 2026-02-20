@@ -1,7 +1,6 @@
 """Test suite to validate compliance with research paper specifications."""
 
 import numpy as np
-import pytest
 from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO
 from quantum_portfolio_optimizer.core.vqe_solver import PortfolioVQESolver
 from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
@@ -95,7 +94,6 @@ class TestResearchCompliance:
 
     def test_popsize_calculation(self):
         """Test that popsize meets minimum 0.8 * n_qubits requirement."""
-        from quantum_portfolio_optimizer.core.optimizer_interface import run_differential_evolution
 
         num_qubits = 6  # XS problem size
         min_popsize = int(0.8 * num_qubits)  # Should be at least 4.8 → 4
@@ -107,6 +105,7 @@ class TestResearchCompliance:
 
         # This should be adjusted internally
         # Note: Need to verify this is implemented in run_differential_evolution
+        assert config.popsize < min_popsize, "Test setup should start below minimum popsize"
         assert min_popsize >= 4, "Minimum popsize for 6 qubits should be at least 4"
 
 

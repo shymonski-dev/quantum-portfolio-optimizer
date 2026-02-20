@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO, QUBOProblem
+from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO
 from quantum_portfolio_optimizer.exceptions import QUBOError
 
 

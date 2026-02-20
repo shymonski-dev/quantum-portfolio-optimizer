@@ -50,7 +50,6 @@ class ResultAnalyzer:
         return allocations
 
     def evaluate_bitstrings(self, bitstrings: List[str]) -> List[CandidateSolution]:
-        hamiltonian = self.qubo.to_pauli()
         energies = []
         for bitstring in bitstrings:
             bits = np.array(list(bitstring[::-1]), dtype=int)
