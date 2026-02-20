@@ -165,4 +165,4 @@ def test_integration_xs_problem():
     assert len(result.optimal_parameters) == result.ansatz_report['num_parameters']
     assert result.ansatz_report['num_qubits'] == 6  # XS problem size
 
-    return result
+    assert result is not None

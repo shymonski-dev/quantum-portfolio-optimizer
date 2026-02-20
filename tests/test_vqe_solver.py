@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
 from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO
@@ -71,3 +72,57 @@ def test_progress_callback_receives_updates():
     assert progress_updates, "Progress callback should receive updates"
     assert progress_updates[-1][0] == result.num_evaluations
     assert progress_updates[-1][2] == result.best_history[-1]
+
+
+def test_vqe_preserves_optimizer_initial_point(monkeypatch):
+    returns = np.array([0.02, 0.015])
+    covariance = np.array([[0.1, 0.02], [0.02, 0.08]])
+    qubo = PortfolioQUBO(
+        expected_returns=returns,
+        covariance=covariance,
+        budget=1.0,
+        risk_aversion=0.5,
+        time_steps=1,
+        resolution_qubits=1,
+        max_investment=1.0,
+    ).build()
+
+    backend_config = {"name": "local_simulator", "shots": None, "seed": 7}
+    estimator, _ = get_provider(backend_config)
+
+    warm_point = [0.42] * (qubo.num_variables * 2)
+    captured = {}
+
+    def fake_run(objective, config, num_qubits):
+        captured["x0"] = config.x0
+        params = np.asarray(config.x0 or [0.0] * len(config.bounds), dtype=float)
+        objective(params)
+
+        class Result:
+            x = params
+            fun = 0.0
+            success = True
+            message = "mock"
+
+        return Result()
+
+    monkeypatch.setattr(
+        "quantum_portfolio_optimizer.core.vqe_solver.run_differential_evolution",
+        fake_run,
+    )
+
+    solver = PortfolioVQESolver(
+        estimator=estimator,
+        ansatz_options={"reps": 1},
+        optimizer_config=DifferentialEvolutionConfig(
+            bounds=[(-1.0, 1.0)] * len(warm_point),
+            maxiter=1,
+            popsize=2,
+            seed=7,
+            x0=warm_point,
+        ),
+        seed=7,
+    )
+
+    solver.solve(qubo)
+    assert captured["x0"] == warm_point

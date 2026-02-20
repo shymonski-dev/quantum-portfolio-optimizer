@@ -9,6 +9,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 import numpy as np
 
 from ..simulation.provider import get_provider
+from ..simulation.zne import fold_circuit, zne_extrapolate
 from .ansatz_library import analyse_circuit, get_ansatz, initialise_parameters
 from .optimizer_interface import DifferentialEvolutionConfig, run_differential_evolution
 from .qubo_formulation import QUBOProblem
@@ -53,6 +54,7 @@ class PortfolioVQESolver:
         seed: Optional[int] = None,
         progress_callback: Optional[Callable[[int, float, float], None]] = None,
         extraction_shots: int = 1024,  # NEW: shots for solution extraction
+        zne_config: Optional[dict] = None,
     ) -> None:
         if estimator is None:
             raise ValueError("Estimator cannot be None.")
@@ -67,6 +69,7 @@ class PortfolioVQESolver:
         self.seed = seed
         self.progress_callback = progress_callback
         self.extraction_shots = extraction_shots  # NEW
+        self.zne_config = zne_config or {}
 
     def solve(self, qubo: QUBOProblem) -> VQEResult:
         num_qubits = qubo.num_variables
@@ -82,13 +85,31 @@ class PortfolioVQESolver:
 
         def energy_evaluation(parameters: np.ndarray) -> float:
             nonlocal best_so_far
-            circuit = ansatz.assign_parameters(parameters)
-            try:
-                job = self.estimator.run(circuits=[circuit], observables=[observable])
-            except TypeError:
-                job = self.estimator.run([(circuit, observable)])
-            result = job.result()
-            energy = self._extract_energy(result)
+
+            if self.zne_config.get("zne_gate_folding", False):
+                noise_factors = self.zne_config.get("zne_noise_factors", [1, 3, 5])
+                extrapolator = self.zne_config.get("zne_extrapolator", "linear")
+                zne_values = []
+                for nf in noise_factors:
+                    bound_for_zne = ansatz.assign_parameters(parameters)
+                    folded = fold_circuit(bound_for_zne, nf)
+                    try:
+                        zne_job = self.estimator.run([(folded, observable)])
+                        zne_result = zne_job.result()
+                        zne_values.append(self._extract_energy(zne_result))
+                    except Exception as e:
+                        logger.warning("ZNE evaluation at nf=%d failed: %s", nf, e)
+                        zne_values.append(float("inf"))
+                energy = zne_extrapolate(noise_factors, zne_values, extrapolator)
+            else:
+                circuit = ansatz.assign_parameters(parameters)
+                try:
+                    job = self.estimator.run(circuits=[circuit], observables=[observable])
+                except TypeError:
+                    job = self.estimator.run([(circuit, observable)])
+                result = job.result()
+                energy = self._extract_energy(result)
+
             history.append(energy)
             if energy < best_so_far:
                 best_so_far = energy
@@ -124,6 +145,7 @@ class PortfolioVQESolver:
                 convergence_window=config.convergence_window,
                 adaptive_mutation=config.adaptive_mutation,
                 adaptive_recombination=config.adaptive_recombination,
+                x0=config.x0,
             )
 
         _ = initial_point  # kept for future warm-start schemes
@@ -216,14 +238,18 @@ class PortfolioVQESolver:
             job = self.sampler.run([measured_circuit], shots=shots)
 
         result = job.result()
-        counts = self._extract_counts(result, num_qubits)
+        counts = self._extract_counts(result, num_qubits, shots=shots)
 
         # Find the most frequent bitstring
         best_bitstring = max(counts, key=counts.get)
         return best_bitstring, counts
 
     @staticmethod
-    def _extract_counts(result: object, num_qubits: int) -> Dict[str, int]:
+    def _extract_counts(
+        result: object,
+        num_qubits: int,
+        shots: Optional[int] = None,
+    ) -> Dict[str, int]:
         """Extract measurement counts from sampler result, handling V1/V2 interfaces.
 
         Args:
@@ -259,10 +285,22 @@ class PortfolioVQESolver:
             quasi_dists = result.quasi_dists
             if quasi_dists and len(quasi_dists) > 0:
                 dist = quasi_dists[0]
+                total_shots = shots
+                if total_shots is None:
+                    metadata = getattr(result, "metadata", None)
+                    if isinstance(metadata, (list, tuple)) and metadata:
+                        first_meta = metadata[0]
+                        if isinstance(first_meta, dict):
+                            total_shots = first_meta.get("shots")
+                    elif isinstance(metadata, dict):
+                        total_shots = metadata.get("shots")
+                if total_shots is None:
+                    total_shots = 1024
+                total_shots = max(int(total_shots), 1)
                 counts = {}
                 for state, prob in dist.items():
                     bitstring = format(state, f"0{num_qubits}b")
-                    counts[bitstring] = int(prob * 1024)  # Approximate counts
+                    counts[bitstring] = int(prob * total_shots)
                 return counts
 
         raise ValueError("Unsupported sampler result format")

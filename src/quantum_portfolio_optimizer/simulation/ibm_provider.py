@@ -159,13 +159,7 @@ def _get_runtime_service(token: Optional[str] = None, channel: str = "ibm_quantu
 
 def _build_estimator_options(config: IBMQuantumConfig) -> "EstimatorOptions":
     """Build EstimatorOptions with error mitigation settings."""
-    options = EstimatorOptions()
-
-    # Set execution options
-    options.execution.shots = config.shots
-
-    # Set optimization level
-    options.optimization_level = config.optimization_level
+    options = EstimatorOptions(default_shots=config.shots)
 
     # Configure resilience/error mitigation
     em = config.error_mitigation
@@ -192,13 +186,7 @@ def _build_estimator_options(config: IBMQuantumConfig) -> "EstimatorOptions":
 
 def _build_sampler_options(config: IBMQuantumConfig) -> "SamplerOptions":
     """Build SamplerOptions with error mitigation settings."""
-    options = SamplerOptions()
-
-    # Set execution options
-    options.execution.shots = config.shots
-
-    # Set optimization level
-    options.optimization_level = config.optimization_level
+    options = SamplerOptions(default_shots=config.shots)
 
     # Dynamical decoupling
     em = config.error_mitigation
@@ -351,8 +339,8 @@ def get_ibm_quantum_backend(config: Dict[str, Any]) -> Tuple[Any, Any]:
         sampler = SamplerV2(session=session, options=sampler_options)
         logger.info("Created EstimatorV2 and SamplerV2 with Session mode")
     else:
-        estimator = EstimatorV2(backend=backend, options=estimator_options)
-        sampler = SamplerV2(backend=backend, options=sampler_options)
+        estimator = EstimatorV2(mode=backend, options=estimator_options)
+        sampler = SamplerV2(mode=backend, options=sampler_options)
         logger.info("Created EstimatorV2 and SamplerV2 in job mode")
 
     # Log error mitigation settings

@@ -207,6 +207,10 @@ class PortfolioQUBO:
         time_budget_penalty: Optional[float] = None,
         asset_max_allocation: Optional[Iterable[float]] = None,
         asset_penalty_strength: Optional[float] = None,
+        risk_metric: str = "variance",
+        cvar_confidence: float = 0.95,
+        esg_scores: Optional[np.ndarray] = None,
+        esg_weight: float = 0.0,
     ) -> None:
         self.risk_aversion = float(risk_aversion)
         self.transaction_cost = float(transaction_cost)
@@ -230,6 +234,11 @@ class PortfolioQUBO:
         if self.budget <= 0:
             raise InvalidBudgetError(self.budget, "must be positive")
 
+        self.risk_metric = risk_metric
+        self.cvar_confidence = float(cvar_confidence)
+        if self.risk_metric not in ("variance", "cvar"):
+            raise ValueError(f"risk_metric must be 'variance' or 'cvar', got '{self.risk_metric}'")
+
         self.expected_returns = self._normalise_returns(expected_returns, self.time_steps)
         self.covariance = np.asarray(covariance, dtype=float)
         if self.covariance.ndim != 2 or self.covariance.shape[0] != self.covariance.shape[1]:
@@ -244,6 +253,16 @@ class PortfolioQUBO:
 
         if not np.allclose(self.covariance, self.covariance.T, atol=1e-8):
             raise InvalidCovarianceError("must be symmetric", shape=self.covariance.shape)
+
+        self.esg_scores = np.asarray(esg_scores, dtype=float) if esg_scores is not None else None
+        self.esg_weight = float(esg_weight)
+        if self.esg_weight != 0.0 and self.esg_scores is None:
+            raise ValueError("esg_scores must be provided when esg_weight != 0.0")
+        if self.esg_scores is not None and len(self.esg_scores) != self.num_assets:
+            raise ValueError(
+                f"esg_scores length ({len(self.esg_scores)}) must match "
+                f"number of assets ({self.num_assets})"
+            )
 
         self._bit_weights = np.array([2**b for b in range(self.resolution_qubits)], dtype=float)
         self._levels = 2**self.resolution_qubits
@@ -375,6 +394,53 @@ class PortfolioQUBO:
                 quadratic[idx_j, idx_i] += coeff
         return offset
 
+    def _compute_downside_covariance(self, covariance: np.ndarray) -> np.ndarray:
+        """
+        Compute Monte Carlo semivariance (lower-tail covariance) as a tractable
+        approximation of CVaR tail-risk.
+
+        Generates return scenarios via Cholesky decomposition, then computes
+        co-semivariance: E[r_i * r_j | r_i < 0 AND r_j < 0].
+
+        Returns a positive semi-definite N x N matrix.
+        """
+        n_assets = covariance.shape[0]
+        n_scenarios = max(1000, 10 * n_assets)
+
+        rng = np.random.default_rng(seed=42)  # Fixed seed for reproducibility
+
+        try:
+            L = np.linalg.cholesky(covariance)
+        except np.linalg.LinAlgError:
+            # Covariance may not be strictly PD; add small regularisation
+            reg = covariance + np.eye(n_assets) * 1e-8
+            L = np.linalg.cholesky(reg)
+
+        # Generate correlated return scenarios: shape (n_scenarios, n_assets)
+        z = rng.standard_normal((n_scenarios, n_assets))
+        returns = z @ L.T  # Each row is one scenario
+
+        # Select scenarios where ALL assets have negative return (conservative tail)
+        downside_mask = np.all(returns < 0, axis=1)
+
+        if downside_mask.sum() < 10:
+            # Fallback: select worst 5% of scenarios by mean return
+            mean_returns = returns.mean(axis=1)
+            threshold = np.percentile(mean_returns, 5)
+            downside_mask = mean_returns <= threshold
+
+        downside_returns = returns[downside_mask]  # shape (n_down, n_assets)
+
+        # Co-semivariance: E[r_i * r_j] over downside scenarios
+        downside_cov = (downside_returns.T @ downside_returns) / len(downside_returns)
+
+        # Ensure PSD
+        eigenvalues = np.linalg.eigvalsh(downside_cov)
+        if eigenvalues.min() < 0:
+            downside_cov += np.eye(n_assets) * (-eigenvalues.min() + 1e-8)
+
+        return downside_cov
+
     def build(self) -> QUBOProblem:
         """Construct the QUBO problem."""
         num_vars = len(self._variable_order)
@@ -387,12 +453,18 @@ class PortfolioQUBO:
             mu = self.expected_returns[t_step, asset]
             linear[idx] += -mu * self._variable_weights[idx]
 
+        # Select effective covariance based on risk metric
+        if self.risk_metric == "cvar":
+            effective_cov = self._compute_downside_covariance(self.covariance)
+        else:
+            effective_cov = self.covariance
+
         # Risk term aggregated per asset (x^T Sigma x).
         for asset_i in range(self.num_assets):
             weights_i = self._weights_for_asset(asset_i)
             for asset_j in range(asset_i, self.num_assets):
                 weights_j = self._weights_for_asset(asset_j)
-                cov_coeff = self.covariance[asset_i, asset_j] * self.risk_aversion
+                cov_coeff = effective_cov[asset_i, asset_j] * self.risk_aversion
                 if abs(cov_coeff) <= 1e-12:
                     continue
                 for idx_i, weight_i in weights_i:
@@ -464,6 +536,18 @@ class PortfolioQUBO:
                                 quadratic[var_curr, var_prev] += coeff
                     prev_vars = curr_vars
 
+        # ESG incentive: reduce cost for high-ESG assets (negative linear term)
+        if self.esg_scores is not None and self.esg_weight != 0.0:
+            max_score = self.esg_scores.max()
+            if max_score > 0:
+                norm_scores = self.esg_scores / max_score
+            else:
+                norm_scores = self.esg_scores.copy()
+
+            for asset_idx in range(self.num_assets):
+                for idx in self._asset_indices[asset_idx]:
+                    linear[idx] += -self.esg_weight * norm_scores[asset_idx]
+
         quadratic = (quadratic + quadratic.T) / 2.0  # Ensure symmetry.
 
         metadata: Dict[str, Any] = {
@@ -480,6 +564,8 @@ class PortfolioQUBO:
             "budget_penalty": self.penalty_strength,
             "time_budget_penalty": self.time_budget_penalty,
             "asset_penalty_strength": self.asset_penalty_strength,
+            "risk_metric": self.risk_metric,
+            "esg_weight": self.esg_weight,
         }
         if self.time_step_budgets is not None:
             metadata["time_step_budgets"] = self.time_step_budgets.tolist()

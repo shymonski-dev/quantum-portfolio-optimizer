@@ -161,13 +161,17 @@ def warm_start_vqe(
             solver_type="VQE",
         ) from e
 
-    # Ensure allocations match the number of qubits
+    # Ensure allocations match the number of qubits (expand if needed for resolution encoding).
     if len(classical_allocations) != num_qubits:
-        raise WarmStartError(
-            f"Classical allocations length ({len(classical_allocations)}) "
-            f"does not match ansatz qubits ({num_qubits})",
-            solver_type="VQE",
-        )
+        if num_qubits % len(classical_allocations) == 0:
+            repeat = num_qubits // len(classical_allocations)
+            classical_allocations = np.repeat(classical_allocations / repeat, repeat)
+        else:
+            raise WarmStartError(
+                f"Classical allocations length ({len(classical_allocations)}) "
+                f"does not match ansatz qubits ({num_qubits})",
+                solver_type="VQE",
+            )
 
     # Convert allocations to rotation angles for first layer
     first_layer_angles = allocations_to_rotation_angles(
@@ -220,6 +224,7 @@ def warm_start_qaoa(
     budget: float = 1.0,
     risk_aversion: float = 0.5,
     config: Optional[WarmStartConfig] = None,
+    mixer_type: str = "x",
 ) -> WarmStartResult:
     """Generate warm start parameters for QAOA using mean-field heuristics.
 
@@ -258,27 +263,39 @@ def warm_start_qaoa(
         )
         energy_scale = max(linear_scale, quad_scale, 1e-6)
 
-        # Initialize gamma based on energy scale
-        # Optimal gamma is typically O(1/energy_scale)
-        gamma_initial = 0.5 / energy_scale
+        if mixer_type == "xy":
+            # Trotterized adiabatic schedule for XY mixer (Bartschi & Eidenbenz 2020)
+            # gamma increases (cost grows), beta decreases (mixer fades) with depth
+            gamma_scale = energy_scale if energy_scale > 0 else 1.0
+            params = []
+            for p in range(layers):
+                t = (p + 1) / layers  # progress from 0 to 1
+                gamma_p = (0.5 / gamma_scale) * (0.5 + 0.5 * t)
+                beta_p = (np.pi / 4) * (1.0 - 0.5 * t)
+                params.extend([gamma_p, beta_p])
+            initial_parameters = np.clip(params, 0, 2 * np.pi)
+        else:
+            # Initialize gamma based on energy scale
+            # Optimal gamma is typically O(1/energy_scale)
+            gamma_initial = 0.5 / energy_scale
 
-        # Initialize beta based on mean-field approximation
-        # For transverse field mixer, optimal beta starts around pi/4
-        beta_initial = np.pi / 4
+            # Initialize beta based on mean-field approximation
+            # For transverse field mixer, optimal beta starts around pi/4
+            beta_initial = np.pi / 4
 
-        # Build parameter vector: [gamma_0, beta_0, gamma_1, beta_1, ...]
-        initial_parameters = np.zeros(2 * layers)
+            # Build parameter vector: [gamma_0, beta_0, gamma_1, beta_1, ...]
+            initial_parameters = np.zeros(2 * layers)
 
-        # Use interpolation strategy: gradually increase gamma, decrease beta
-        for p in range(layers):
-            # Linear interpolation from initial to scaled values
-            t = (p + 1) / layers
+            # Use interpolation strategy: gradually increase gamma, decrease beta
+            for p in range(layers):
+                # Linear interpolation from initial to scaled values
+                t = (p + 1) / layers
 
-            # Gamma increases with depth
-            initial_parameters[2 * p] = gamma_initial * (0.5 + 0.5 * t)
+                # Gamma increases with depth
+                initial_parameters[2 * p] = gamma_initial * (0.5 + 0.5 * t)
 
-            # Beta decreases with depth (annealing-like schedule)
-            initial_parameters[2 * p + 1] = beta_initial * (1.0 - 0.3 * t)
+                # Beta decreases with depth (annealing-like schedule)
+                initial_parameters[2 * p + 1] = beta_initial * (1.0 - 0.3 * t)
 
         # Add small noise for symmetry breaking
         if config.noise_scale > 0:

@@ -15,7 +15,7 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=[
-        "qiskit>=1.0.0",
+        "qiskit>=2.3.0",
         "numpy>=1.24.0",
         "scipy>=1.10.0",
         "pandas>=2.0.0",
@@ -26,10 +26,16 @@ setup(
         "click>=8.0",
     ],
     extras_require={
-        "dev": ["pytest>=7.0.0"],
+        "dev": ["pytest>=7.0.0", "pytest-cov>=4.0", "ruff>=0.1.0"],
         "noise": ["qiskit-aer>=0.14.0"],
         "ibm": ["qiskit-ibm-runtime>=0.20.0"],
         "all": ["qiskit-aer>=0.14.0", "qiskit-ibm-runtime>=0.20.0"],
+    },
+    project_urls={
+        "Homepage": "https://github.com/shymonski-dev/quantum-portfolio-optimizer",
+        "Bug Tracker": "https://github.com/shymonski-dev/quantum-portfolio-optimizer/issues",
+        "Source": "https://github.com/shymonski-dev/quantum-portfolio-optimizer",
+        "Documentation": "https://github.com/shymonski-dev/quantum-portfolio-optimizer#readme",
     },
     python_requires=">=3.9",
     classifiers=[

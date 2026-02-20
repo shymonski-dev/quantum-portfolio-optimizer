@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from qiskit.circuit.library import RealAmplitudes
+from qiskit.circuit.library import real_amplitudes
 
 from quantum_portfolio_optimizer.core.warm_start import (
     WarmStartConfig,
@@ -91,7 +91,7 @@ class TestWarmStartVQE:
         expected_returns = [0.1, 0.15, 0.12, 0.08]
         covariance = np.eye(4) * 0.04
 
-        ansatz = RealAmplitudes(4, reps=2)
+        ansatz = real_amplitudes(num_qubits=4, reps=2)
 
         result = warm_start_vqe(
             expected_returns=expected_returns,
@@ -106,7 +106,7 @@ class TestWarmStartVQE:
         """Should store the classical allocations used."""
         expected_returns = [0.1, 0.15, 0.12]
         covariance = np.eye(3) * 0.04
-        ansatz = RealAmplitudes(3, reps=1)
+        ansatz = real_amplitudes(num_qubits=3, reps=1)
 
         result = warm_start_vqe(
             expected_returns=expected_returns,
@@ -122,7 +122,7 @@ class TestWarmStartVQE:
         """Should use amplitude encoding method."""
         expected_returns = [0.1, 0.2]
         covariance = np.eye(2) * 0.04
-        ansatz = RealAmplitudes(2, reps=1)
+        ansatz = real_amplitudes(num_qubits=2, reps=1)
 
         result = warm_start_vqe(
             expected_returns=expected_returns,
@@ -136,7 +136,7 @@ class TestWarmStartVQE:
         """Should raise error when dimensions don't match."""
         expected_returns = [0.1, 0.2, 0.3]  # 3 assets
         covariance = np.eye(3) * 0.04
-        ansatz = RealAmplitudes(4, reps=1)  # 4 qubits - mismatch!
+        ansatz = real_amplitudes(num_qubits=4, reps=1)  # 4 qubits - mismatch!
 
         with pytest.raises(WarmStartError):
             warm_start_vqe(
@@ -149,7 +149,7 @@ class TestWarmStartVQE:
         """Should estimate positive improvement."""
         expected_returns = [0.1, 0.15]
         covariance = np.eye(2) * 0.04
-        ansatz = RealAmplitudes(2, reps=1)
+        ansatz = real_amplitudes(num_qubits=2, reps=1)
 
         result = warm_start_vqe(
             expected_returns=expected_returns,

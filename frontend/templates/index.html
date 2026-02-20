@@ -522,6 +522,18 @@
 
         .detail-row span:first-child { color: #888; }
         .detail-row span:last-child { color: #c0c0c0; }
+
+        .circuit-panel {
+            margin-top: 25px;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .circuit-panel h4 {
+            margin-bottom: 12px;
+        }
     </style>
 </head>
 <body>
@@ -577,9 +589,21 @@
                         <input type="password" id="ibm_api_key" placeholder="Enter your IBM Quantum API key">
                     </div>
                     <div class="form-group" style="margin-bottom: 10px;">
+                        <label for="ibm_channel">Access Channel</label>
+                        <select id="ibm_channel" onchange="handleIBMChannelChange()">
+                            <option value="ibm_quantum">IBM Quantum (Community)</option>
+                            <option value="ibm_cloud">IBM Cloud (Premium)</option>
+                        </select>
+                        <p class="info-text">Use IBM Quantum for hub/group/project instances such as ibm-q/open/main</p>
+                    </div>
+                    <div class="form-group" id="ibm-instance-group" style="margin-bottom: 10px;">
+                        <label for="ibm_instance">Instance (hub/group/project)</label>
+                        <input type="text" id="ibm_instance" placeholder="ibm-q/open/main">
+                    </div>
+                    <div class="form-group" id="ibm-crn-group" style="margin-bottom: 10px; display: none;">
                         <label for="ibm_crn">Cloud Resource Name (CRN)</label>
                         <input type="text" id="ibm_crn" placeholder="crn:v1:bluemix:public:quantum-computing:...">
-                        <p class="info-text">Found in your IBM Cloud dashboard</p>
+                        <p class="info-text">Required for IBM Cloud channel</p>
                     </div>
                     <div class="form-group" style="margin-bottom: 10px;">
                         <label for="ibm_device">Device</label>
@@ -588,6 +612,56 @@
                             <option value="ibm_strasbourg">ibm_strasbourg (127 qubits)</option>
                             <option value="ibm_brussels">ibm_brussels (127 qubits)</option>
                         </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label for="resilience_level">Resilience Level</label>
+                        <select id="resilience_level" onchange="toggleZNEControls()">
+                            <option value="0">Level 0 - None</option>
+                            <option value="1" selected>Level 1 - Basic (DD + Twirling)</option>
+                            <option value="2">Level 2 - Advanced (ZNE)</option>
+                        </select>
+                        <p class="info-text">Matches IBM 2026 workflow for community advantage tracking</p>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="ibm_zne">
+                            Enable Zero-Noise Extrapolation
+                        </label>
+                    </div>
+                    <div class="row" id="zne-options" style="display: none;">
+                        <div class="form-group">
+                            <label for="zne_noise_factors">ZNE Noise Factors</label>
+                            <input type="text" id="zne_noise_factors" value="1,3,5">
+                        </div>
+                        <div class="form-group">
+                            <label for="zne_extrapolator">ZNE Extrapolator</label>
+                            <select id="zne_extrapolator">
+                                <option value="linear">Linear</option>
+                                <option value="exponential" selected>Exponential</option>
+                                <option value="polynomial">Polynomial</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="ibm_dd" checked>
+                                Dynamical Decoupling
+                            </label>
+                            <label for="dd_sequence" class="info-text" style="margin-top: 6px;">Sequence</label>
+                            <select id="dd_sequence">
+                                <option value="XpXm">XpXm</option>
+                                <option value="XY4">XY4</option>
+                                <option value="XX">XX</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="ibm_twirling" checked>
+                                Pauli Twirling
+                            </label>
+                            <p class="info-text">Randomizes noise for better mitigation</p>
+                        </div>
                     </div>
                     <p class="info-text" style="color: #888;">Real quantum hardware - runs may take longer due to queue times</p>
                 </div>
@@ -642,6 +716,24 @@
                                     <option value="2">p=2 (Deeper)</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label for="cvar_alpha">CVaR Alpha (tail fraction)</label>
+                                <div class="slider-container">
+                                    <span>0.1</span>
+                                    <input type="range" id="cvar_alpha" min="0.1" max="1.0" step="0.05" value="1.0">
+                                    <span>1.0</span>
+                                    <span class="slider-value" id="cvar_alpha_value">1.0</span>
+                                </div>
+                                <p class="info-text">1.0 = standard expectation; lower values focus on worst-case outcomes (CVaR-QAOA, Barkoutsos et al. 2020)</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="mixer_type">Mixer Type</label>
+                                <select id="mixer_type">
+                                    <option value="x">X-Mixer (standard)</option>
+                                    <option value="xy">XY-Mixer + Dicke state (constraint-preserving)</option>
+                                </select>
+                                <p class="info-text">XY-mixer enforces exact cardinality without penalty tuning (Bartschi &amp; Eidenbenz 2019)</p>
+                            </div>
                             <div id="qaoa-warning" style="background: rgba(192, 192, 192, 0.05); border: 1px solid #555; border-radius: 8px; padding: 10px; margin-bottom: 15px;">
                                 <p style="color: #888; font-size: 0.85rem;">
                                     <strong style="color: #c0c0c0;">Note:</strong> QAOA circuits are deeper than VQE, which may result in higher noise on real hardware.
@@ -662,6 +754,34 @@
                             </label>
                             <p class="info-text">Initialize circuit parameters using Markowitz solution (recommended)</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ESG & MIP section -->
+                <div class="form-group" style="margin-top: 20px; padding: 15px; border: 1px solid #333; border-radius: 8px; background: rgba(255,255,255,0.02);">
+                    <h4 style="margin-bottom: 12px; color: #c0c0c0;">ESG &amp; Integer Constraints</h4>
+
+                    <div class="form-group">
+                        <label for="esg_scores">ESG Scores (comma-separated, one per ticker)</label>
+                        <input type="text" id="esg_scores" placeholder="e.g. 72, 85, 60, 90" value="">
+                        <p class="info-text">Higher score = more sustainable. Leave blank to disable ESG weighting.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="esg_weight">ESG Weight</label>
+                        <div class="slider-container">
+                            <span>0</span>
+                            <input type="range" id="esg_weight" min="0" max="1" step="0.05" value="0">
+                            <span>1</span>
+                            <span class="slider-value" id="esg_weight_value">0</span>
+                        </div>
+                        <p class="info-text">Fraction of objective devoted to ESG score maximisation (0 = off)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="num_assets_select">Assets to Select (MIP baseline &amp; XY-mixer)</label>
+                        <input type="number" id="num_assets_select" value="" min="1" placeholder="Default: half of tickers">
+                        <p class="info-text">Exact cardinality for the integer-constrained MIP baseline and XY-mixer QAOA</p>
                     </div>
                 </div>
 
@@ -726,8 +846,9 @@
                                 <tr>
                                     <th>Metric</th>
                                     <th>Quantum</th>
-                                    <th>Classical</th>
-                                    <th>Difference</th>
+                                    <th>Markowitz</th>
+                                    <th>MIP (integer)</th>
+                                    <th>vs Markowitz</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -735,22 +856,26 @@
                                     <td>Expected Return</td>
                                     <td class="quantum-col" id="cmp-quantum-return">-</td>
                                     <td class="classical-col" id="cmp-classical-return">-</td>
+                                    <td class="classical-col" id="cmp-mip-return">-</td>
                                     <td id="cmp-diff-return">-</td>
                                 </tr>
                                 <tr>
                                     <td>Portfolio Risk</td>
                                     <td class="quantum-col" id="cmp-quantum-risk">-</td>
                                     <td class="classical-col" id="cmp-classical-risk">-</td>
+                                    <td class="classical-col" id="cmp-mip-risk">-</td>
                                     <td id="cmp-diff-risk">-</td>
                                 </tr>
                                 <tr>
                                     <td>Sharpe Ratio</td>
                                     <td class="quantum-col" id="cmp-quantum-sharpe">-</td>
                                     <td class="classical-col" id="cmp-classical-sharpe">-</td>
+                                    <td class="classical-col" id="cmp-mip-sharpe">-</td>
                                     <td id="cmp-diff-sharpe">-</td>
                                 </tr>
                             </tbody>
                         </table>
+                        <div id="mip-info" style="margin-top: 8px; font-size: 0.8rem; color: #666;"></div>
                     </div>
 
                     <div class="convergence-panel" id="convergence-panel">
@@ -772,8 +897,19 @@
                     <div style="margin-top: 20px; font-size: 0.85rem; color: #666;">
                         <p>Optimal QUBO Value: <span id="optimal-value">-</span></p>
                         <p>Iterations: <span id="iterations">-</span></p>
+                        </div>
                     </div>
-                </div>
+
+                    <div class="circuit-panel" id="circuit-panel" style="display: none;">
+                        <h3>Quantum Circuit Details</h3>
+                        <div class="detail-row"><span>Circuit</span><span id="circuit-name">-</span></div>
+                        <div class="detail-row"><span>Algorithm</span><span id="circuit-algo">-</span></div>
+                        <div class="detail-row"><span>Backend</span><span id="circuit-backend">-</span></div>
+                        <div class="detail-row"><span>Qubits</span><span id="circuit-qubits">-</span></div>
+                        <div class="detail-row"><span>Parameters</span><span id="circuit-params">-</span></div>
+                        <div class="detail-row"><span>Depth</span><span id="circuit-depth">-</span></div>
+                        <div class="detail-row"><span>Shots</span><span id="circuit-shots">-</span></div>
+                    </div>
 
                 <div id="welcome" style="text-align: center; padding: 60px 20px; color: #666;">
                     <div style="margin-bottom: 20px;">
@@ -803,6 +939,16 @@
             document.getElementById('risk_value').textContent = this.value;
         });
 
+        // CVaR alpha slider
+        document.getElementById('cvar_alpha').addEventListener('input', function() {
+            document.getElementById('cvar_alpha_value').textContent = this.value;
+        });
+
+        // ESG weight slider
+        document.getElementById('esg_weight').addEventListener('input', function() {
+            document.getElementById('esg_weight_value').textContent = this.value;
+        });
+
         function toggleSettings() {
             const content = document.getElementById('advanced-settings');
             const arrow = document.getElementById('settings-arrow');
@@ -813,7 +959,37 @@
         function toggleIBMSettings() {
             const backend = document.getElementById('backend').value;
             const ibmSettings = document.getElementById('ibm-settings');
-            ibmSettings.style.display = backend === 'ibm_quantum' ? 'block' : 'none';
+            const shouldShow = backend === 'ibm_quantum';
+            ibmSettings.style.display = shouldShow ? 'block' : 'none';
+            if (shouldShow) {
+                handleIBMChannelChange();
+                toggleZNEControls();
+            }
+        }
+
+        function handleIBMChannelChange() {
+            const channel = document.getElementById('ibm_channel').value;
+            const crnGroup = document.getElementById('ibm-crn-group');
+            const instanceGroup = document.getElementById('ibm-instance-group');
+            if (channel === 'ibm_cloud') {
+                crnGroup.style.display = 'block';
+                instanceGroup.style.display = 'none';
+            } else {
+                crnGroup.style.display = 'none';
+                instanceGroup.style.display = 'block';
+            }
+        }
+
+        function toggleZNEControls() {
+            const resilience = parseInt(document.getElementById('resilience_level').value, 10);
+            const zneCheckbox = document.getElementById('ibm_zne');
+            const zneOptions = document.getElementById('zne-options');
+            const enableZNE = resilience >= 2;
+            zneCheckbox.disabled = !enableZNE;
+            if (!enableZNE) {
+                zneCheckbox.checked = false;
+            }
+            zneOptions.style.display = (enableZNE && zneCheckbox.checked) ? 'grid' : 'none';
         }
 
         function toggleAlgorithmSettings() {
@@ -851,6 +1027,7 @@
 
         // Update qubit count when tickers change
         document.getElementById('tickers').addEventListener('input', updateQubitCount);
+        document.getElementById('ibm_zne').addEventListener('change', toggleZNEControls);
 
         function drawConvergenceChart(history, bestHistory) {
             const canvas = document.getElementById('convergence-chart');
@@ -938,18 +1115,36 @@
                 ibm_device: document.getElementById('ibm_device').value,
                 ibm_api_key: document.getElementById('ibm_api_key').value,
                 ibm_crn: document.getElementById('ibm_crn').value,
+                ibm_channel: document.getElementById('ibm_channel').value,
+                ibm_instance: document.getElementById('ibm_instance').value,
+                resilience_level: document.getElementById('resilience_level').value,
+                zne_enabled: document.getElementById('ibm_zne').checked,
+                zne_noise_factors: document.getElementById('zne_noise_factors').value,
+                zne_extrapolator: document.getElementById('zne_extrapolator').value,
+                dd_enabled: document.getElementById('ibm_dd').checked,
+                dd_sequence: document.getElementById('dd_sequence').value,
+                twirling_enabled: document.getElementById('ibm_twirling').checked,
                 ansatz: document.getElementById('ansatz').value,
                 reps: document.getElementById('reps').value,
                 qaoa_layers: document.getElementById('qaoa_layers').value,
                 maxiter: document.getElementById('maxiter').value,
                 warm_start: document.getElementById('warm-start').checked,
-                resolution_qubits: document.getElementById('resolution').value
+                resolution_qubits: document.getElementById('resolution').value,
+                cvar_alpha: document.getElementById('cvar_alpha').value,
+                mixer_type: document.getElementById('mixer_type').value,
+                esg_scores: document.getElementById('esg_scores').value,
+                esg_weight: document.getElementById('esg_weight').value,
+                num_assets_select: document.getElementById('num_assets_select').value || null,
             };
 
             // Validate IBM credentials if IBM Quantum is selected
             if (backend === 'ibm_quantum') {
-                if (!data.ibm_api_key || !data.ibm_crn) {
-                    alert('Please enter your IBM Quantum API Key and CRN');
+                if (!data.ibm_api_key) {
+                    alert('Please enter your IBM Quantum API Key');
+                    return;
+                }
+                if (data.ibm_channel === 'ibm_cloud' && !data.ibm_crn) {
+                    alert('IBM Cloud channel requires a Cloud Resource Name (CRN)');
                     return;
                 }
             }
@@ -1024,12 +1219,28 @@
                     document.getElementById('cmp-quantum-risk').textContent = result.portfolio_risk + '%';
                     document.getElementById('cmp-quantum-sharpe').textContent = result.sharpe_ratio;
 
-                    // Update classical values
+                    // Update Markowitz values
                     document.getElementById('cmp-classical-return').textContent = cb.expected_return + '%';
                     document.getElementById('cmp-classical-risk').textContent = cb.portfolio_risk + '%';
                     document.getElementById('cmp-classical-sharpe').textContent = cb.sharpe_ratio;
 
-                    // Calculate and display differences
+                    // Update MIP values
+                    const mip = result.mip_baseline;
+                    if (mip && mip.success) {
+                        document.getElementById('cmp-mip-return').textContent = mip.expected_return + '%';
+                        document.getElementById('cmp-mip-risk').textContent = mip.portfolio_risk + '%';
+                        document.getElementById('cmp-mip-sharpe').textContent = mip.sharpe_ratio;
+                        document.getElementById('mip-info').textContent =
+                            `MIP: ${mip.num_assets_selected} assets selected — ${mip.message}`;
+                    } else {
+                        document.getElementById('cmp-mip-return').textContent = 'n/a';
+                        document.getElementById('cmp-mip-risk').textContent = 'n/a';
+                        document.getElementById('cmp-mip-sharpe').textContent = 'n/a';
+                        document.getElementById('mip-info').textContent =
+                            mip ? mip.message : 'MIP baseline not computed';
+                    }
+
+                    // Calculate and display vs-Markowitz differences
                     const returnDiff = (result.expected_return - cb.expected_return).toFixed(2);
                     const riskDiff = (result.portfolio_risk - cb.portfolio_risk).toFixed(2);
                     const sharpeDiff = (result.sharpe_ratio - cb.sharpe_ratio).toFixed(2);
@@ -1076,6 +1287,21 @@
                     `).join('');
                 } else {
                     document.getElementById('measurements-panel').style.display = 'none';
+                }
+
+                const circuitPanel = document.getElementById('circuit-panel');
+                if (result.circuit_report) {
+                    circuitPanel.style.display = 'block';
+                    const report = result.circuit_report;
+                    document.getElementById('circuit-name').textContent = report.name || '-';
+                    document.getElementById('circuit-algo').textContent = report.algorithm || '-';
+                    document.getElementById('circuit-backend').textContent = report.backend || '-';
+                    document.getElementById('circuit-qubits').textContent = report.num_qubits ?? '-';
+                    document.getElementById('circuit-params').textContent = report.num_parameters ?? '-';
+                    document.getElementById('circuit-depth').textContent = report.depth ?? '-';
+                    document.getElementById('circuit-shots').textContent = report.shots ?? '-';
+                } else {
+                    circuitPanel.style.display = 'none';
                 }
 
                 // Display quality score
@@ -1127,6 +1353,14 @@
 
             btn.disabled = false;
         }
+
+        window.addEventListener('load', () => {
+            toggleIBMSettings();
+            toggleAlgorithmSettings();
+            updateQubitCount();
+            handleIBMChannelChange();
+            toggleZNEControls();
+        });
     </script>
 </body>
 </html>

@@ -134,6 +134,9 @@ def fetch_stock_data(tickers: List[str], start_date: str, end_date: str) -> pd.D
 
     # Select Adjusted Close prices and drop rows with any missing values
     adj_close = data['Adj Close'].dropna()
+    if isinstance(adj_close, pd.Series):
+        # yfinance returns a Series for a single ticker; normalize to DataFrame for consistency.
+        adj_close = adj_close.to_frame(name=tickers[0])
 
     if adj_close.empty:
         raise MarketDataError(

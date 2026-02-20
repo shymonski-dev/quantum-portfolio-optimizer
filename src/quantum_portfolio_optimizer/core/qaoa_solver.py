@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import warnings
 from dataclasses import dataclass
+from itertools import combinations
+from math import comb
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -12,6 +14,7 @@ from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
 
 from ..simulation.provider import get_provider
+from ..simulation.zne import fold_circuit, zne_extrapolate
 from .optimizer_interface import DifferentialEvolutionConfig, run_differential_evolution
 from .qubo_formulation import QUBOProblem
 
@@ -32,6 +35,7 @@ class QAOAResult:
     layers: int
     converged: bool
     optimizer_message: str
+    circuit_report: Dict[str, float]
 
 
 class PortfolioQAOASolver:
@@ -53,6 +57,10 @@ class PortfolioQAOASolver:
         seed: Optional[int] = None,
         progress_callback: Optional[Callable[[int, float, float], None]] = None,
         shots: int = 1024,
+        zne_config: Optional[dict] = None,
+        cvar_alpha: float = 1.0,
+        mixer_type: str = "x",
+        num_assets: Optional[int] = None,
     ) -> None:
         """Initialize QAOA solver.
 
@@ -64,6 +72,11 @@ class PortfolioQAOASolver:
             seed: Random seed for reproducibility.
             progress_callback: Optional callback(iteration, energy, best_energy).
             shots: Number of measurement shots.
+            zne_config: Optional ZNE configuration dict with keys:
+                zne_gate_folding (bool), zne_noise_factors (list), zne_extrapolator (str).
+            cvar_alpha: CVaR tail fraction in (0, 1]. 1.0 = standard expectation value.
+            mixer_type: Mixer type, 'x' for standard X-mixer or 'xy' for XY-mixer.
+            num_assets: Number of assets to select (required when mixer_type='xy').
         """
         if sampler is None:
             raise ValueError("Sampler is required for QAOA.")
@@ -74,6 +87,12 @@ class PortfolioQAOASolver:
                 DeprecationWarning,
                 stacklevel=2
             )
+        if not (0 < cvar_alpha <= 1.0):
+            raise ValueError(f"cvar_alpha must be in (0, 1], got {cvar_alpha}")
+        if mixer_type not in ("x", "xy"):
+            raise ValueError(f"mixer_type must be 'x' or 'xy', got '{mixer_type}'")
+        if mixer_type == "xy" and num_assets is None:
+            raise ValueError("num_assets must be set when mixer_type='xy'")
         self.sampler = sampler
         self.estimator = estimator
         self.layers = layers
@@ -81,6 +100,10 @@ class PortfolioQAOASolver:
         self.seed = seed
         self.progress_callback = progress_callback
         self.shots = shots
+        self.zne_config = zne_config or {}
+        self.cvar_alpha = cvar_alpha
+        self.mixer_type = mixer_type
+        self.num_assets = num_assets
 
     def _build_qaoa_circuit(self, qubo: QUBOProblem) -> Tuple[QuantumCircuit, List[Parameter]]:
         """Build parameterized QAOA circuit for the given QUBO.
@@ -104,15 +127,31 @@ class PortfolioQAOASolver:
         gammas = [Parameter(f"gamma_{p}") for p in range(self.layers)]
         betas = [Parameter(f"beta_{p}") for p in range(self.layers)]
 
-        # Initial state: uniform superposition
-        qc.h(range(num_qubits))
+        # Validate num_assets for XY mixer now that n_qubits is known
+        if self.mixer_type == "xy":
+            if self.num_assets < 1 or self.num_assets >= num_qubits:
+                raise ValueError(
+                    f"num_assets ({self.num_assets}) must satisfy 1 <= num_assets < n_qubits ({num_qubits})"
+                )
+
+        # Initial state
+        if self.mixer_type == "xy":
+            self._prepare_dicke_state(qc, num_qubits, self.num_assets)
+        else:
+            qc.h(range(num_qubits))
+
+        # Convert QUBO to Ising form once and reuse across layers.
+        h, j_matrix, _ = qubo.to_ising()
 
         # QAOA layers
         for p in range(self.layers):
             # Cost layer: exp(-i * gamma * H_C)
-            self._apply_cost_layer(qc, qubo, gammas[p])
+            self._apply_cost_layer(qc, h, j_matrix, gammas[p])
             # Mixer layer: exp(-i * beta * H_M)
-            self._apply_mixer_layer(qc, betas[p])
+            if self.mixer_type == "xy":
+                self._apply_xy_mixer_layer(qc, betas[p], num_qubits)
+            else:
+                self._apply_mixer_layer(qc, betas[p])
 
         # Collect all parameters in order [gamma_0, beta_0, gamma_1, beta_1, ...]
         parameters = []
@@ -123,41 +162,35 @@ class PortfolioQAOASolver:
         return qc, parameters
 
     def _apply_cost_layer(
-        self, qc: QuantumCircuit, qubo: QUBOProblem, gamma: Parameter
+        self, qc: QuantumCircuit, h: np.ndarray, j_matrix: np.ndarray, gamma: Parameter
     ) -> None:
         """Apply the cost layer exp(-i * gamma * H_C).
 
-        For QUBO: H_C = sum_i h_i * Z_i + sum_{i<j} J_{ij} * Z_i * Z_j
-
-        The transformation from binary x_i to Pauli Z_i is: x_i = (1 - Z_i) / 2
+        For Ising form: H_C = sum_i h_i * Z_i + sum_{i<j} J_{ij} * Z_i * Z_j
 
         Args:
             qc: Quantum circuit to modify.
-            qubo: QUBO problem with linear and quadratic terms.
+            h: Ising linear coefficients (from qubo.to_ising()).
+            j_matrix: Ising quadratic coefficients (from qubo.to_ising()).
             gamma: Parameter for this layer.
         """
-        num_qubits = qubo.num_variables
+        num_qubits = qc.num_qubits
 
         # Linear terms: h_i * Z_i -> RZ(2 * gamma * h_i) on qubit i
         for i in range(num_qubits):
-            coeff = qubo.linear[i]
+            coeff = h[i]
             if abs(coeff) > 1e-10:
-                # Convert from QUBO coefficient to Ising coefficient
-                # Z_i = 1 - 2*x_i, so x_i = (1-Z_i)/2
-                # Linear term: h_i * x_i -> h_i * (1-Z_i)/2 = h_i/2 - (h_i/2)*Z_i
-                qc.rz(gamma * coeff, i)
+                qc.rz(2 * gamma * coeff, i)
 
         # Quadratic terms: J_{ij} * Z_i * Z_j -> CNOT-RZ-CNOT sequence
-        # Note: QUBO matrix is guaranteed symmetric by QUBOProblem validation
-        # (qubo_formulation.py:42-43), so Q[i,j] == Q[j,i]. We use Q[i,j] directly.
         for i in range(num_qubits):
             for j in range(i + 1, num_qubits):
-                coeff = qubo.quadratic[i, j]  # Symmetric matrix: Q[i,j] == Q[j,i]
+                coeff = j_matrix[i, j]
                 if abs(coeff) > 1e-10:
                     # ZZ interaction: exp(-i * gamma * J * Z_i * Z_j)
                     # Implemented as: CNOT(i,j) - RZ(2*gamma*J, j) - CNOT(i,j)
                     qc.cx(i, j)
-                    qc.rz(gamma * coeff, j)
+                    qc.rz(2 * gamma * coeff, j)
                     qc.cx(i, j)
 
     def _apply_mixer_layer(self, qc: QuantumCircuit, beta: Parameter) -> None:
@@ -171,6 +204,139 @@ class PortfolioQAOASolver:
         """
         for i in range(qc.num_qubits):
             qc.rx(2 * beta, i)
+
+    def _compute_objective(self, energies: np.ndarray, counts: np.ndarray) -> float:
+        """Compute the QAOA objective over measured bitstring energies.
+
+        If cvar_alpha == 1.0: standard weighted expectation value (backward-compatible).
+        If cvar_alpha < 1.0: CVaR — average over the worst (highest-energy) alpha-fraction
+        of measured shots. This gives 4.5x faster convergence (Barkoutsos et al. 2020).
+
+        For a minimization QUBO, "worst" = highest energy (largest cost).
+
+        Args:
+            energies: Array of QUBO energies for each unique bitstring.
+            counts:   Array of shot counts corresponding to each bitstring.
+
+        Returns:
+            Scalar objective value.
+        """
+        if self.cvar_alpha == 1.0:
+            return float(np.average(energies, weights=counts))
+
+        # Sort descending by energy (worst/highest first)
+        sort_idx = np.argsort(energies)[::-1]
+        sorted_e = energies[sort_idx]
+        sorted_c = counts[sort_idx]
+
+        total_shots = int(counts.sum())
+        cutoff = int(np.ceil(self.cvar_alpha * total_shots))
+
+        # Accumulate from the worst end until we have 'cutoff' shots
+        cum = np.cumsum(sorted_c)
+        mask = cum <= cutoff
+        if not mask.any():
+            mask[0] = True  # always include the single worst bitstring
+
+        tail_energies = sorted_e[mask]
+        tail_counts = sorted_c[mask]
+        return float(np.average(tail_energies, weights=tail_counts))
+
+    def _prepare_dicke_state(self, qc: QuantumCircuit, n_qubits: int, k: int) -> None:
+        """Prepare the Dicke state |D_n^k>: uniform superposition of all n-qubit
+        computational basis states with exactly k ones.
+
+        This is the correct initial state for XY-mixer QAOA, ensuring only
+        valid k-asset portfolios are explored (constraint-preserving).
+
+        For n <= 8: uses StatePreparation with explicit statevector (exact).
+        For n > 8:  TODO: implement recursive Bartschi-Eidenbenz construction
+                          (O(n*k) gates) for hardware efficiency.
+
+        Args:
+            qc: QuantumCircuit to apply preparation to (in-place).
+            n_qubits: Total number of qubits n.
+            k: Hamming weight (number of selected assets).
+        """
+        from qiskit.circuit.library import StatePreparation
+
+        # Build statevector: 1/sqrt(C(n,k)) for all weight-k basis states, 0 elsewhere
+        n_states = 2 ** n_qubits
+        sv = np.zeros(n_states, dtype=complex)
+
+        amplitude = 1.0 / np.sqrt(comb(n_qubits, k))
+        for bits in combinations(range(n_qubits), k):
+            # Convert qubit indices to integer index (LSB = qubit 0)
+            idx = sum(1 << b for b in bits)
+            sv[idx] = amplitude
+
+        # StatePreparation is Qiskit 2.x preferred API (replaces deprecated initialize)
+        prep = StatePreparation(sv)
+        qc.append(prep, range(n_qubits))
+
+    def _apply_xy_mixer_layer(
+        self, qc: QuantumCircuit, beta: "Parameter", n_qubits: int
+    ) -> None:
+        """Apply XY mixer: H_B = sum_{i<j} (X_i X_j + Y_i Y_j).
+
+        The XY mixer preserves Hamming weight, ensuring only valid k-asset
+        portfolios are explored after Dicke state initialisation.
+
+        Uses XXPlusYYGate(theta=2*beta) which implements exp(-i*beta*(XX+YY)/2)
+        on each qubit pair.
+
+        Args:
+            qc: QuantumCircuit (modified in-place).
+            beta: Qiskit Parameter for the mixer angle.
+            n_qubits: Number of qubits.
+        """
+        try:
+            from qiskit.circuit.library import XXPlusYYGate
+            for i in range(n_qubits):
+                for j in range(i + 1, n_qubits):
+                    # XXPlusYYGate(theta, beta_phase)
+                    # theta=2*beta follows the XY-QAOA literature convention
+                    qc.append(XXPlusYYGate(2 * beta, 0), [i, j])
+        except ImportError:
+            # Fallback: manual CNOT+RY+RZ decomposition of XX+YY rotation
+            for i in range(n_qubits):
+                for j in range(i + 1, n_qubits):
+                    # XX+YY rotation by angle 2*beta on qubits (i, j)
+                    qc.cx(j, i)
+                    qc.ry(-beta, i)
+                    qc.rz(-np.pi / 2, j)
+                    qc.cx(i, j)
+                    qc.ry(beta, i)
+                    qc.cx(j, i)
+                    qc.rz(np.pi / 2, j)
+
+    def _run_circuit_and_get_objective(self, bound_circuit: QuantumCircuit, qubo: QUBOProblem) -> float:
+        """Run sampler on bound_circuit, extract counts, compute objective (CVaR or expectation)."""
+        measured = bound_circuit.copy()
+        measured.measure_all()
+
+        try:
+            job = self.sampler.run([(measured, [])])
+        except TypeError:
+            job = self.sampler.run([measured], shots=self.shots)
+
+        result = job.result()
+        counts = self._extract_counts(result, bound_circuit.num_qubits, self.shots)
+
+        if not counts:
+            return float("inf")
+
+        # Build energy and count arrays for _compute_objective (supports CVaR)
+        bitstrings = list(counts.keys())
+        energies = np.array([
+            self._evaluate_qubo_energy(
+                np.array([int(b) for b in bs[::-1]], dtype=float), qubo
+            )
+            for bs in bitstrings
+        ])
+        counts_array = np.array([counts[bs] for bs in bitstrings], dtype=float)
+
+        return self._compute_objective(energies, counts_array)
 
     def solve(self, qubo: QUBOProblem) -> QAOAResult:
         """Solve the QUBO problem using QAOA.
@@ -188,6 +354,14 @@ class PortfolioQAOASolver:
         # Build QAOA circuit
         qaoa_circuit, parameters = self._build_qaoa_circuit(qubo)
         num_params = len(parameters)  # 2 * layers (gamma and beta per layer)
+        circuit_report = {
+            "name": "QAOA",
+            "num_qubits": num_qubits,
+            "num_parameters": num_params,
+            "depth": qaoa_circuit.depth(),
+            "size": qaoa_circuit.size(),
+            "layers": self.layers,
+        }
 
         logger.info(
             f"QAOA circuit: {num_qubits} qubits, {self.layers} layers, "
@@ -206,27 +380,19 @@ class PortfolioQAOASolver:
             bound_circuit = qaoa_circuit.assign_parameters(
                 dict(zip(parameters, param_values))
             )
-            measured_circuit = bound_circuit.copy()
-            measured_circuit.measure_all()
 
-            # Get measurement counts
-            try:
-                job = self.sampler.run([(measured_circuit, [])])
-            except TypeError:
-                job = self.sampler.run([measured_circuit], shots=self.shots)
-
-            result = job.result()
-            counts = self._extract_counts(result, num_qubits)
-
-            # Calculate expected energy from measurement counts
-            total_shots = sum(counts.values())
-            energy = 0.0
-            for bitstring, count in counts.items():
-                # Convert bitstring to binary array (LSB first)
-                bits = np.array([int(b) for b in bitstring[::-1]], dtype=float)
-                # Evaluate QUBO energy for this bitstring
-                bit_energy = self._evaluate_qubo_energy(bits, qubo)
-                energy += (count / total_shots) * bit_energy
+            if self.zne_config.get("zne_gate_folding", False):
+                noise_factors = self.zne_config.get("zne_noise_factors", [1, 3, 5])
+                extrapolator = self.zne_config.get("zne_extrapolator", "linear")
+                values = [
+                    self._run_circuit_and_get_objective(
+                        fold_circuit(bound_circuit, nf), qubo
+                    )
+                    for nf in noise_factors
+                ]
+                energy = zne_extrapolate(noise_factors, values, extrapolator)
+            else:
+                energy = self._run_circuit_and_get_objective(bound_circuit, qubo)
 
             history.append(energy)
             if energy < best_so_far:
@@ -259,6 +425,7 @@ class PortfolioQAOASolver:
                 recombination=config.recombination,
                 seed=config.seed or self.seed,
                 polish=config.polish,
+                x0=config.x0,
             )
 
         # Run optimization
@@ -279,7 +446,7 @@ class PortfolioQAOASolver:
             job = self.sampler.run([measured_circuit], shots=self.shots)
 
         final_result = job.result()
-        measurement_counts = self._extract_counts(final_result, num_qubits)
+        measurement_counts = self._extract_counts(final_result, num_qubits, shots=self.shots)
         best_bitstring = max(measurement_counts, key=measurement_counts.get)
 
         logger.info(f"QAOA optimization complete. Best bitstring: {best_bitstring}")
@@ -295,6 +462,7 @@ class PortfolioQAOASolver:
             layers=self.layers,
             converged=bool(getattr(result, "success", False)),
             optimizer_message=str(getattr(result, "message", "")),
+            circuit_report=circuit_report,
         )
 
     @staticmethod
@@ -317,7 +485,11 @@ class PortfolioQAOASolver:
         )
 
     @staticmethod
-    def _extract_counts(result: object, num_qubits: int) -> Dict[str, int]:
+    def _extract_counts(
+        result: object,
+        num_qubits: int,
+        shots: Optional[int] = None,
+    ) -> Dict[str, int]:
         """Extract measurement counts from sampler result.
 
         Handles both V1 and V2 Qiskit primitive interfaces.
@@ -353,10 +525,22 @@ class PortfolioQAOASolver:
             quasi_dists = result.quasi_dists
             if quasi_dists and len(quasi_dists) > 0:
                 dist = quasi_dists[0]
+                total_shots = shots
+                if total_shots is None:
+                    metadata = getattr(result, "metadata", None)
+                    if isinstance(metadata, (list, tuple)) and metadata:
+                        first_meta = metadata[0]
+                        if isinstance(first_meta, dict):
+                            total_shots = first_meta.get("shots")
+                    elif isinstance(metadata, dict):
+                        total_shots = metadata.get("shots")
+                if total_shots is None:
+                    total_shots = 1024
+                total_shots = max(int(total_shots), 1)
                 counts = {}
                 for state, prob in dist.items():
                     bitstring = format(state, f"0{num_qubits}b")
-                    counts[bitstring] = int(prob * 1024)
+                    counts[bitstring] = int(prob * total_shots)
                 return counts
 
         raise ValueError("Unsupported sampler result format")
