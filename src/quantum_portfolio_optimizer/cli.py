@@ -27,7 +27,13 @@ def cli() -> None:
 @cli.command()
 @click.option("--config", "-c", default="config.yaml", help="Path to the configuration file.")
 @click.option("--json-output", is_flag=True, help="Print full result as JSON.")
-def run(config: str, json_output: bool) -> None:
+@click.option(
+    "--json-file",
+    type=click.Path(dir_okay=False, writable=True, path_type=str),
+    default=None,
+    help="Write full result payload to a JSON file.",
+)
+def run(config: str, json_output: bool, json_file: str | None) -> None:
     """Run a full portfolio optimization experiment from config."""
     click.echo(f"Loading configuration from: {config}")
     try:
@@ -246,6 +252,12 @@ def run(config: str, json_output: bool) -> None:
         }
 
         click.echo("\nOptimization complete.")
+        if json_file:
+            with open(json_file, "w", encoding="utf-8") as file_handle:
+                json.dump(payload, file_handle, indent=2, sort_keys=True)
+                file_handle.write("\n")
+            click.echo(f"Saved JSON result to: {json_file}")
+
         if json_output:
             click.echo(json.dumps(payload, indent=2, sort_keys=True))
         else:

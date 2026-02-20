@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -144,3 +146,46 @@ def test_cli_run_qaoa_text_output(monkeypatch):
     assert "Optimization complete." in result.output
     assert "Algorithm: qaoa" in result.output
     assert "Objective value: -0.456000" in result.output
+
+
+def test_cli_run_writes_json_file(monkeypatch):
+    config = {
+        "portfolio": {
+            "tickers": ["AAPL", "MSFT"],
+            "start_date": "2024-01-01",
+            "end_date": "2024-02-01",
+        },
+        "algorithm": {
+            "name": "vqe",
+            "settings": {"ansatz": "real_amplitudes", "reps": 1},
+        },
+        "backend": {"name": "local_simulator", "shots": 128, "seed": 7},
+        "optimizer": {"maxiter": 3, "popsize": 4, "seed": 7},
+        "risk_model": {"parameters": {"risk_factor": 0.5}},
+    }
+
+    monkeypatch.setattr(cli_module, "load_config", lambda _path: config)
+    monkeypatch.setattr(cli_module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices())
+    monkeypatch.setattr(cli_module, "get_provider", lambda _cfg: (object(), object()))
+    monkeypatch.setattr(cli_module, "PortfolioQUBO", _DummyQUBOBuilder)
+    monkeypatch.setattr(cli_module, "PortfolioVQESolver", _DummyVQESolver)
+    monkeypatch.setattr(
+        cli_module,
+        "get_ansatz",
+        lambda *_args, **_kwargs: SimpleNamespace(num_parameters=3),
+    )
+    monkeypatch.setattr(cli_module, "markowitz_baseline", lambda **_kwargs: _markowitz_result())
+
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        output_file = "result.json"
+        result = runner.invoke(
+            cli_module.cli,
+            ["run", "--config", "dummy.yaml", "--json-file", output_file],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(Path(output_file).read_text(encoding="utf-8"))
+        assert payload["algorithm"] == "vqe"
+        assert payload["best_bitstring"] == "10"
+        assert "Saved JSON result to:" in result.output

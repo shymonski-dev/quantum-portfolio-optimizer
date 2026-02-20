@@ -107,6 +107,77 @@ qpo          # uses config.yaml defaults
 pytest       # run all tests
 ```
 
+## GitHub Marketplace Action
+
+This repository now includes a root `action.yml` so it can be published as a GitHub Marketplace Action.
+
+### Quick Workflow Example
+
+```yaml
+name: Portfolio Optimization
+
+on:
+  workflow_dispatch:
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run quantum portfolio optimizer
+        id: optimizer
+        uses: shymonski-dev/quantum-portfolio-optimizer@main
+        with:
+          config-path: config.yaml
+          python-version: "3.11"
+
+      - name: Print summary
+        run: |
+          echo "Algorithm: ${{ steps.optimizer.outputs.algorithm }}"
+          echo "Backend: ${{ steps.optimizer.outputs.backend }}"
+          echo "Objective value: ${{ steps.optimizer.outputs.objective-value }}"
+          echo "Expected return (%): ${{ steps.optimizer.outputs.expected-return-pct }}"
+          echo "Portfolio risk (%): ${{ steps.optimizer.outputs.portfolio-risk-pct }}"
+          echo "Sharpe ratio: ${{ steps.optimizer.outputs.sharpe-ratio }}"
+```
+
+Use `@main` for initial testing, then move to a stable release tag such as `@v0` for production workflows.
+
+### Action Inputs
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `config-path` | `config.yaml` | Path to configuration file for the optimizer command |
+| `python-version` | `3.11` | Python version used on the runner |
+| `install-extras` | empty | Package extras to install (empty for base package only) |
+| `working-directory` | `.` | Directory that contains project and config files |
+| `print-json` | `false` | Print full JSON payload to workflow logs |
+
+### Action Outputs
+
+| Output | Description |
+|--------|-------------|
+| `result-path` | Path to JSON result file on runner |
+| `result-json` | Full JSON payload on one line |
+| `algorithm` | Solver algorithm used |
+| `backend` | Backend used |
+| `objective-value` | Objective value from optimizer |
+| `expected-return-pct` | Expected annual return percent |
+| `portfolio-risk-pct` | Portfolio volatility percent |
+| `sharpe-ratio` | Sharpe ratio |
+| `converged` | Convergence flag |
+| `best-bitstring` | Best measured bitstring when available |
+
+### Marketplace Publish Checklist
+
+1. Push changes to the default branch in the public repository.
+2. Create a release tag (for example `v0.3.0`) and a major tag (`v0`).
+3. Open the repository on GitHub, then choose **Releases** and publish the release.
+4. Open **Actions** listing flow from the repository and submit metadata for review.
+5. After approval, update workflow examples to use the stable major tag (`@v0`).
+
 ## Web Interface Usage
 
 1. **Enter Stock Tickers** — comma-separated (e.g., `AAPL, GOOG, MSFT, AMZN`)

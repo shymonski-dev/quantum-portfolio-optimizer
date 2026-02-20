@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- GitHub Action metadata at repository root (`action.yml`) for GitHub Marketplace publishing.
+- Structured marketplace outputs for optimizer runs: algorithm, backend, objective value, risk and return metrics, convergence flag, and result JSON payload.
+- Command line `run` option `--json-file` to write a machine-readable result payload for automation workflows.
+
+### Changed
+- Declared Python support aligned to Qiskit requirements (`>=3.10`) and updated test workflow matrix to Python 3.10 through 3.12.
+- Readme now includes GitHub Marketplace workflow example, action input and output reference, and publish checklist.
+
 ## [0.2.0] - 2026-02-20
 
 ### Added
@@ -78,5 +89,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unified constraint system (`core/constraints.py`):
   `EqualityConstraint`, `InequalityConstraint`, `BoundsConstraint`, `ConstraintManager`
 
+[Unreleased]: https://github.com/shymonski-dev/quantum-portfolio-optimizer/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/shymonski-dev/quantum-portfolio-optimizer/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/shymonski-dev/quantum-portfolio-optimizer/releases/tag/v0.1.0

@@ -1,0 +1,125 @@
+name: "Quantum Portfolio Optimizer"
+description: "Run a portfolio optimization experiment from a configuration file and export structured outputs."
+author: "shymonski-dev"
+branding:
+  icon: "activity"
+  color: "blue"
+
+inputs:
+  config-path:
+    description: "Path to the configuration file used by the optimizer command."
+    required: false
+    default: "config.yaml"
+  python-version:
+    description: "Python version used to run the action."
+    required: false
+    default: "3.11"
+  install-extras:
+    description: "Package extras to install. Set empty to install base package only."
+    required: false
+    default: ""
+  working-directory:
+    description: "Directory where project files and configuration file exist."
+    required: false
+    default: "."
+  print-json:
+    description: "When true, print the full JSON payload to workflow logs."
+    required: false
+    default: "false"
+
+outputs:
+  result-path:
+    description: "Path to the generated result JSON file on the runner."
+    value: ${{ steps.run_optimizer.outputs.result_path }}
+  result-json:
+    description: "Single-line JSON payload for downstream workflow steps."
+    value: ${{ steps.run_optimizer.outputs.result_json }}
+  algorithm:
+    description: "Algorithm name used for the run."
+    value: ${{ steps.run_optimizer.outputs.algorithm }}
+  backend:
+    description: "Backend name used for the run."
+    value: ${{ steps.run_optimizer.outputs.backend }}
+  objective-value:
+    description: "Objective value of the best solution."
+    value: ${{ steps.run_optimizer.outputs.objective_value }}
+  expected-return-pct:
+    description: "Expected annual return in percent."
+    value: ${{ steps.run_optimizer.outputs.expected_return_pct }}
+  portfolio-risk-pct:
+    description: "Portfolio volatility in percent."
+    value: ${{ steps.run_optimizer.outputs.portfolio_risk_pct }}
+  sharpe-ratio:
+    description: "Sharpe ratio for the selected portfolio."
+    value: ${{ steps.run_optimizer.outputs.sharpe_ratio }}
+  converged:
+    description: "Whether the optimizer reported convergence."
+    value: ${{ steps.run_optimizer.outputs.converged }}
+  best-bitstring:
+    description: "Best measured bitstring when available."
+    value: ${{ steps.run_optimizer.outputs.best_bitstring }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: "pip"
+
+    - name: Install package
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        python -m pip install --upgrade pip
+        extras="${{ inputs.install-extras }}"
+        if [ -n "${extras}" ]; then
+          python -m pip install -e ".[${extras}]"
+        else
+          python -m pip install -e .
+        fi
+
+    - id: run_optimizer
+      name: Run optimizer
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        result_path="${RUNNER_TEMP}/quantum-portfolio-optimizer-result.json"
+        cmd=(python -m quantum_portfolio_optimizer.cli run --config "${{ inputs.config-path }}" --json-file "${result_path}")
+        if [ "${{ inputs.print-json }}" = "true" ]; then
+          cmd+=(--json-output)
+        fi
+        "${cmd[@]}"
+
+        RESULT_PATH="${result_path}" python - <<'PY'
+        import json
+        import os
+        from pathlib import Path
+
+        result_path = Path(os.environ["RESULT_PATH"])
+        payload = json.loads(result_path.read_text(encoding="utf-8"))
+        output_path = Path(os.environ["GITHUB_OUTPUT"])
+
+        def write_scalar(name: str, value: object) -> None:
+            normalised = "" if value is None else str(value)
+            with output_path.open("a", encoding="utf-8") as handle:
+                handle.write(f"{name}={normalised}\n")
+
+        with output_path.open("a", encoding="utf-8") as handle:
+            handle.write("result_json<<EOF\n")
+            handle.write(json.dumps(payload, separators=(",", ":"), sort_keys=True))
+            handle.write("\nEOF\n")
+
+        write_scalar("result_path", result_path)
+        write_scalar("algorithm", payload.get("algorithm"))
+        write_scalar("backend", payload.get("backend"))
+        write_scalar("objective_value", payload.get("objective_value"))
+        write_scalar("expected_return_pct", payload.get("expected_return_pct"))
+        write_scalar("portfolio_risk_pct", payload.get("portfolio_risk_pct"))
+        write_scalar("sharpe_ratio", payload.get("sharpe_ratio"))
+        write_scalar("converged", payload.get("converged"))
+        write_scalar("best_bitstring", payload.get("best_bitstring"))
+        PY

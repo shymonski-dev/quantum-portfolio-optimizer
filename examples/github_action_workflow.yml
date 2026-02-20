@@ -1,0 +1,27 @@
+name: Portfolio Optimization
+
+on:
+  workflow_dispatch:
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run quantum portfolio optimizer action
+        id: optimizer
+        uses: shymonski-dev/quantum-portfolio-optimizer@v0
+        with:
+          config-path: config.yaml
+          python-version: "3.11"
+
+      - name: Print summary
+        run: |
+          echo "Algorithm: ${{ steps.optimizer.outputs.algorithm }}"
+          echo "Backend: ${{ steps.optimizer.outputs.backend }}"
+          echo "Objective value: ${{ steps.optimizer.outputs.objective-value }}"
+          echo "Expected return (%): ${{ steps.optimizer.outputs.expected-return-pct }}"
+          echo "Portfolio risk (%): ${{ steps.optimizer.outputs.portfolio-risk-pct }}"
+          echo "Sharpe ratio: ${{ steps.optimizer.outputs.sharpe-ratio }}"
