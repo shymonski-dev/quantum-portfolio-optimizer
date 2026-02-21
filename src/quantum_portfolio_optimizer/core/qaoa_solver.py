@@ -314,10 +314,22 @@ class PortfolioQAOASolver:
         measured = bound_circuit.copy()
         measured.measure_all()
 
-        try:
-            job = self.sampler.run([(measured, [])])
-        except TypeError:
-            job = self.sampler.run([measured], shots=self.shots)
+        # ISA Transpilation for hardware (2026 Requirement)
+        if hasattr(self.sampler, "backend"):
+            try:
+                from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+                backend = self.sampler.backend
+                pm = generate_preset_pass_manager(optimization_level=3, backend=backend)
+                isa_measured = pm.run(measured)
+                job = self.sampler.run([(isa_measured, [])])
+            except Exception as e:
+                logger.warning("ISA transpilation failed for QAOA: %s", e)
+                job = self.sampler.run([(measured, [])])
+        else:
+            try:
+                job = self.sampler.run([(measured, [])])
+            except TypeError:
+                job = self.sampler.run([measured], shots=self.shots)
 
         result = job.result()
         counts = self._extract_counts(result, bound_circuit.num_qubits, self.shots)
@@ -380,7 +392,18 @@ class PortfolioQAOASolver:
                 dict(zip(parameters, param_values))
             )
 
-            if self.zne_config.get("zne_gate_folding", False):
+            # 2026 Logic: Skip local folding if hardware-native ZNE is active
+            use_local_zne = self.zne_config.get("zne_gate_folding", False)
+            has_native_resilience = False
+            try:
+                # Check for IBM SamplerV2 resilience level
+                options = getattr(self.sampler, "options", None)
+                if options and getattr(options, "resilience_level", 0) >= 1: # Sampler V2 has resilience
+                     has_native_resilience = True
+            except Exception:
+                pass
+
+            if use_local_zne and not has_native_resilience:
                 noise_factors = self.zne_config.get("zne_noise_factors", [1, 3, 5])
                 extrapolator = self.zne_config.get("zne_extrapolator", "linear")
                 values = [

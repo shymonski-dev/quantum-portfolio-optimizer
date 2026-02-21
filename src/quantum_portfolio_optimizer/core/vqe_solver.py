@@ -85,7 +85,21 @@ class PortfolioVQESolver:
         def energy_evaluation(parameters: np.ndarray) -> float:
             nonlocal best_so_far
 
-            if self.zne_config.get("zne_gate_folding", False):
+            # Use modern 2026-era logic: Skip local folding if using hardware-native ZNE
+            use_local_zne = self.zne_config.get("zne_gate_folding", False)
+            
+            # Check if estimator has native resilience enabled (IBM Quantum 2026 workflow)
+            has_native_resilience = False
+            try:
+                # IBM EstimatorV2 options check
+                options = getattr(self.estimator, "options", None)
+                if options and getattr(options, "resilience_level", 0) >= 2:
+                    has_native_resilience = True
+                    logger.debug("Leveraging hardware-native Resilience V2; skipping local ZNE folding.")
+            except Exception:
+                pass
+
+            if use_local_zne and not has_native_resilience:
                 noise_factors = self.zne_config.get("zne_noise_factors", [1, 3, 5])
                 extrapolator = self.zne_config.get("zne_extrapolator", "linear")
                 zne_values = []
@@ -97,15 +111,36 @@ class PortfolioVQESolver:
                         zne_result = zne_job.result()
                         zne_values.append(self._extract_energy(zne_result))
                     except Exception as e:
-                        logger.warning("ZNE evaluation at nf=%d failed: %s", nf, e)
+                        logger.warning("Local ZNE evaluation at nf=%d failed: %s", nf, e)
                         zne_values.append(float("inf"))
                 energy = zne_extrapolate(noise_factors, zne_values, extrapolator)
             else:
                 circuit = ansatz.assign_parameters(parameters)
-                try:
-                    job = self.estimator.run(circuits=[circuit], observables=[observable])
-                except TypeError:
-                    job = self.estimator.run([(circuit, observable)])
+                
+                # ISA Transpilation for hardware (2026 Requirement)
+                # If using IBM Runtime V2, we MUST transpile to ISA
+                if hasattr(self.estimator, "backend"):
+                    try:
+                        from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+                        backend = self.estimator.backend
+                        pm = generate_preset_pass_manager(optimization_level=3, backend=backend)
+                        
+                        # Transpile circuit
+                        isa_circuit = pm.run(circuit)
+                        
+                        # Transpile observable (map to same layout)
+                        isa_observable = observable.apply_layout(isa_circuit.layout)
+                        
+                        job = self.estimator.run([(isa_circuit, isa_observable)])
+                    except Exception as e:
+                        logger.warning("ISA transpilation failed, falling back to raw circuit: %s", e)
+                        job = self.estimator.run([(circuit, observable)])
+                else:
+                    try:
+                        job = self.estimator.run(circuits=[circuit], observables=[observable])
+                    except TypeError:
+                        job = self.estimator.run([(circuit, observable)])
+                
                 result = job.result()
                 energy = self._extract_energy(result)
 
@@ -228,13 +263,25 @@ class PortfolioVQESolver:
         measured_circuit = bound_circuit.copy()
         measured_circuit.measure_all()
 
-        # Run sampler - handle both V1 and V2 interfaces
-        try:
-            # V2 interface: sampler.run([(circuit, params)])
-            job = self.sampler.run([(measured_circuit, [])])
-        except TypeError:
-            # V1 interface: sampler.run(circuits, shots=shots)
-            job = self.sampler.run([measured_circuit], shots=shots)
+        # ISA Transpilation for hardware (2026 Requirement)
+        if hasattr(self.sampler, "backend"):
+            try:
+                from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+                backend = self.sampler.backend
+                pm = generate_preset_pass_manager(optimization_level=3, backend=backend)
+                isa_measured_circuit = pm.run(measured_circuit)
+                job = self.sampler.run([(isa_measured_circuit, [])])
+            except Exception as e:
+                logger.warning("ISA transpilation failed for sampler: %s", e)
+                job = self.sampler.run([(measured_circuit, [])])
+        else:
+            # Run sampler - handle both V1 and V2 interfaces
+            try:
+                # V2 interface: sampler.run([(circuit, params)])
+                job = self.sampler.run([(measured_circuit, [])])
+            except TypeError:
+                # V1 interface: sampler.run(circuits, shots=shots)
+                job = self.sampler.run([measured_circuit], shots=shots)
 
         result = job.result()
         counts = self._extract_counts(result, num_qubits, shots=shots)

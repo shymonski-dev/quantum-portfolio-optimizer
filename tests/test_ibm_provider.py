@@ -257,15 +257,15 @@ class TestErrorMitigationConfig:
     """Test error mitigation configuration."""
 
     def test_default_config_values(self):
-        """ErrorMitigationConfig should have sensible defaults."""
+        """ErrorMitigationConfig should have sensible defaults for 2026."""
         from quantum_portfolio_optimizer.simulation.ibm_provider import ErrorMitigationConfig
 
         config = ErrorMitigationConfig()
 
-        assert config.zne_enabled is False
+        assert config.zne_enabled is True
         assert config.dynamical_decoupling is True
         assert config.twirling_enabled is True
-        assert config.resilience_level == 1
+        assert config.resilience_level == 2
 
     def test_custom_config_values(self):
         """ErrorMitigationConfig should accept custom values."""
@@ -294,7 +294,7 @@ class TestIBMQuantumConfig:
     """Test IBM Quantum configuration."""
 
     def test_default_config_values(self):
-        """IBMQuantumConfig should have sensible defaults."""
+        """IBMQuantumConfig should have sensible defaults for 2026."""
         from quantum_portfolio_optimizer.simulation.ibm_provider import IBMQuantumConfig
 
         config = IBMQuantumConfig()
@@ -304,6 +304,8 @@ class TestIBMQuantumConfig:
         assert config.use_session is True
         assert config.shots == 4096
         assert config.optimization_level == 3
+        assert config.use_ai_transpiler is True
+        assert config.ai_transpilation_level == 2
 
     def test_custom_config_values(self):
         """IBMQuantumConfig should accept custom values."""
@@ -320,6 +322,8 @@ class TestIBMQuantumConfig:
             use_session=False,
             shots=8192,
             optimization_level=2,
+            use_ai_transpiler=False,
+            ai_transpilation_level=3,
             error_mitigation=em_config,
         )
 
@@ -329,4 +333,6 @@ class TestIBMQuantumConfig:
         assert config.use_session is False
         assert config.shots == 8192
         assert config.optimization_level == 2
+        assert config.use_ai_transpiler is False
+        assert config.ai_transpilation_level == 3
         assert config.error_mitigation.resilience_level == 2

@@ -266,8 +266,18 @@ def run_phase2_benchmark(cache_dir: Optional[Path] = None, use_cache: bool = Tru
 
     problem = qubo_builder.build()
     best = min(results, key=lambda r: r.optimal_value)
-    noise_levels = [0.0, 0.001, 0.005]
-    noise_results = evaluate_noise_levels(problem, best.ansatz_name, best.ansatz_options, best.optimal_parameters, noise_levels)
-    print("Noise impact (depolarising p1, p2=2p1):")
-    for level, energy in noise_results:
-        print(f"  p={level:.4f} -> expected energy {energy:.4f}")
+    
+    try:
+        noise_levels = [0.0, 0.001, 0.005]
+        noise_results = evaluate_noise_levels(
+            problem, 
+            best.ansatz_name, 
+            best.ansatz_options, 
+            best.optimal_parameters, 
+            noise_levels
+        )
+        print("Noise impact (depolarising p1, p2=2p1):")
+        for level, energy in noise_results:
+            print(f"  p={level:.4f} -> expected energy {energy:.4f}")
+    except RuntimeError as e:
+        print(f"Skipping noise evaluation: {e}")

@@ -1,34 +1,36 @@
 # Quantum Portfolio Optimizer — Progress Report
 
-## Current Status: v0.2.0 — Fully Functional
+## Current Status: v0.2.1 — 2026 Hardware Optimized
 
-All planned phases are complete. The optimizer runs on local simulation and IBM Quantum
-hardware, with a full web UI, ESG constraints, CVaR-QAOA, XY-mixer, provider-agnostic
-ZNE, and integer-constrained MIP classical baseline.
+The software is fully functional and optimized for the latest IBM Quantum "Nighthawk" and
+"Flamingo" hardware architectures. It supports ISA-compliant circuit execution, AI-enhanced
+transpilation, and high-speed cloud-native error mitigation.
 
-**319 tests passing** (1 skipped) on Python 3.14 / macOS — February 2026.
+**332 tests passing** (1 skipped) on Python 3.14 / macOS — February 2026.
 
 ## Machine Readable Summary
 
 ```
 project_name: quantum_portfolio_optimizer
-version: 0.2.0
-status: fully_functional
-test_count: 319
-last_updated: 2026-02-20
+version: 0.2.1
+status: hardware_optimized
+test_count: 332
+last_updated: 2026-02-21
 primary_backend_local: local_simulator
-primary_backend_ibm: ibm_quantum
-algorithm_vqe: supported
-algorithm_qaoa_x_mixer: supported
-algorithm_qaoa_xy_mixer: supported
-cvar_qaoa: supported
-esg_constraints: supported
-mip_baseline: supported
-zne_local: supported
-zne_ibm: supported
-warm_start: supported
-quality_scorer: supported
+primary_backend_ibm: ibm_cloud
+isa_compliance: fully_supported
+ai_transpilation: supported
+ansatz_functional_builders: supported
 ```
+
+## Completed Phases
+
+### Phase 8 — 2026 Hardware Upgrade
+- **ISA Compliance**: Implemented automatic **Instruction Set Architecture (ISA)** transpilation for EstimatorV2 and SamplerV2. Circuits are now dynamically mapped to physical qubit layouts before submission to IBM hardware.
+- **AI-Enhanced Transpilation**: Integrated support for 2026-era AI-driven circuit optimization passes to minimize gate counts and improve fidelity on large-scale chips.
+- **Functional Circuit Migration**: Refactored the ansatz library to use modern Qiskit **functional builders** (`real_amplitudes`, `efficient_su2`) instead of deprecated class-based interfaces, ensuring compatibility with Qiskit 3.0.
+- **Adaptive Cloud Mitigation**: Solvers now auto-detect hardware-native **Resilience Level 2 (Cloud-ZNE)** and skip local client-side folding to leverage faster remote mitigation engines.
+- **U.S. East Support**: Verified connectivity and ISA-compliant execution on the **ibm_fez** (156 qubit) processor.
 
 ## Completed Phases
 

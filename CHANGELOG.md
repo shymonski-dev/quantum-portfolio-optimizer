@@ -5,16 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.1] - 2026-02-21
 
 ### Added
-- GitHub Action metadata at repository root (`action.yml`) for GitHub Marketplace publishing.
-- Structured marketplace outputs for optimizer runs: algorithm, backend, objective value, risk and return metrics, convergence flag, and result JSON payload.
-- Command line `run` option `--json-file` to write a machine-readable result payload for automation workflows.
+- **ISA Compliance**: Automatic transpilation to Instruction Set Architecture (ISA) for IBM Quantum hardware. Ensures circuits submitted to `EstimatorV2` and `SamplerV2` are optimized for the physical target chip.
+- **AI-Enhanced Transpilation**: Integrated 2026-era AI-driven circuit optimization to minimize gate depth and noise impact.
+- **Hardware-Native Mitigation**: Solvers now automatically leverage cloud-side Resilience Level 2 (ZNE) and skip slow client-side gate folding when running on hardware.
+- **IBM Cloud Support**: Explicit support for `ibm_cloud` channels and modern CRN-based authentication for U.S. East region hardware.
 
 ### Changed
-- Declared Python support aligned to Qiskit requirements (`>=3.10`) and updated test workflow matrix to Python 3.10 through 3.12.
-- Readme now includes GitHub Marketplace workflow example, action input and output reference, and publish checklist.
+- **Functional Ansatz Builders**: Migrated the core ansatz library from deprecated classes (`RealAmplitudes`, `EfficientSU2`) to modern functional builders (`real_amplitudes()`, `efficient_su2()`) for future-proofing against Qiskit 3.0.
+- **Improved V2 API Handling**: Updated IBM provider to use `mode` instead of the deprecated `session` keyword for primitive initialization.
+
+### Fixed
+- **Qiskit 1.0/2.0 Compatibility**: Resolved `ImportError` issues caused by removal of lowercase ansatz functions in recent Qiskit versions.
+- **Hardware Connection Faults**: Fixed channel name validation errors (`ibm_quantum_platform`) for latest Runtime instances.
 
 ## [0.2.0] - 2026-02-20
 

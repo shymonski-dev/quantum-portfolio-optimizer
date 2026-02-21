@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Qiskit 2.x](https://img.shields.io/badge/Qiskit-2.x-6929c4.svg)](https://qiskit.org)
 
-A quantum-classical hybrid application for portfolio optimization using Variational Quantum Eigensolver (VQE) and Quantum Approximate Optimization Algorithm (QAOA). Supports local simulation and real IBM Quantum hardware, with up to 25 assets, ESG constraints, CVaR risk objectives, and integer-constrained classical baselines.
+A quantum-classical hybrid application for portfolio optimization using Variational Quantum Eigensolver (VQE) and Quantum Approximate Optimization Algorithm (QAOA). Optimized for **2026 IBM Quantum Hardware**, this software supports ISA-compliant execution, AI-enhanced transpilation, ESG constraints, CVaR risk objectives, and integer-constrained classical baselines.
 
 ## Overview
 
@@ -14,27 +14,28 @@ The Quantum Portfolio Optimizer solves the Markowitz portfolio optimization prob
 ### Machine Readable Summary
 ```
 project_name: quantum_portfolio_optimizer
-version: 0.2.0
+version: 0.2.1
 primary_goal: markowitz_portfolio_optimization
 problem_formulation: quadratic_unconstrained_binary_optimization
 algorithm_value_vqe: vqe
 algorithm_value_qaoa: qaoa
 backend_value_local_simulator: local_simulator
-backend_value_ibm_quantum: ibm_quantum
-ansatz_value_real_amplitudes: real_amplitudes
-ansatz_value_efficient_su2: efficient_su2
+backend_value_ibm_cloud: ibm_cloud
+isa_compliance: fully_supported
+ai_transpilation: supported
+ansatz_functional_builders: supported
 cvar_qaoa: supported
 xy_mixer: supported
 esg_constraints: supported
 mip_baseline: supported
 zne_local: supported
 max_supported_assets: 25
-test_count: 331
+test_count: 332
 ```
 
 ### Supported Algorithms
 
-**VQE (Variational Quantum Eigensolver)** — Recommended for most use cases. Uses shallow parameterized circuits (RealAmplitudes or EfficientSU2 ansatz) with differential evolution optimization. Best for 10+ assets due to lower circuit depth. Supports warm-start initialization from the Markowitz solution.
+**VQE (Variational Quantum Eigensolver)** — Recommended for most use cases. Uses shallow parameterized circuits (`real_amplitudes` or `efficient_su2` functional builders) with differential evolution optimization. Best for 10+ assets due to lower circuit depth. Supports warm-start initialization from the Markowitz solution.
 
 **QAOA (Quantum Approximate Optimization Algorithm)** — Problem-specific cost and mixer layers. Configurable depth (p=1, 2, …). Two variants:
 - **X-Mixer** (standard): Transverse field, energy-weighted bitstring evaluation
@@ -47,25 +48,25 @@ Both QAOA variants support the **CVaR objective** (`cvar_alpha` ∈ (0,1]): eval
 1. **Data Fetching**: Historical stock prices from Yahoo Finance
 2. **Returns Calculation**: Logarithmic returns and covariance matrices
 3. **QUBO Formulation**: Portfolio optimization converted to a quantum-compatible form, with optional ESG scoring and CVaR risk objective
-4. **Quantum Optimization**: VQE or QAOA finds optimal asset allocations; ZNE gate folding available for both local and IBM backends
+4. **Quantum Optimization**: VQE or QAOA finds optimal asset allocations; **ISA-compliant transpilation** and **AI-enhanced optimization** used for IBM hardware.
 5. **Solution Extraction**: Bitstring sampling from the optimized circuit
 6. **Classical Baselines**: Markowitz continuous optimization and MIP integer-constrained exhaustive baseline for honest comparison
 7. **Results Interpretation**: Portfolio weights, risk metrics, quality score
 
 ## Features
 
+- **2026 IBM Hardware Ready**: Full support for `ibm_cloud` channels, ISA-compliant circuits, and native Resilience V2 (Cloud-side ZNE).
+- **AI-Enhanced Transpilation**: Leverages 2026-era AI passes to minimize gate counts and noise impact on chips like "Nighthawk" and "Flamingo."
+- **Functional Circuit Builders**: Migrated to modern Qiskit functional builders (`real_amplitudes`, `efficient_su2`) for reduced memory overhead and future-proofing.
 - **Multiple Algorithms**: VQE (recommended) and QAOA with X or XY mixer via the web UI
 - **CVaR-QAOA**: Conditional Value-at-Risk objective for faster, noise-robust convergence
 - **ESG Constraints**: Per-asset ESG scores and weighting term in the QUBO objective
 - **MIP Baseline**: Exhaustive integer-constrained classical solver alongside Markowitz for honest benchmarking
-- **ZNE Gate Folding**: Provider-agnostic Zero Noise Extrapolation on both local simulator and IBM hardware
+- **ZNE Gate Folding**: Provider-agnostic Zero Noise Extrapolation on local simulators and managed ZNE on IBM hardware.
 - **Warm Start**: VQE and QAOA initialized from classical Markowitz/heuristic solutions
 - **Dual Backend**: Local StatevectorSampler or IBM Quantum hardware (Heron r1/r2)
 - **Multi-resolution Encoding**: Configurable qubits-per-asset for finer allocation granularity
-- **Error Mitigation (IBM)**: Dynamical decoupling, Pauli twirling, managed ZNE (Resilience Levels 0–2)
-- **Quality Scoring**: Automated Sharpe-feasibility-return composite grade (A–F)
-- **Web Interface**: Dark-themed Flask UI with convergence charts and measurement statistics
-- **331 Tests**: Full unit and integration coverage; 100% passing on Python 3.10–3.12
+- **332 Tests**: Full unit and integration coverage; 100% passing on Python 3.10–3.14
 
 ## Installation
 

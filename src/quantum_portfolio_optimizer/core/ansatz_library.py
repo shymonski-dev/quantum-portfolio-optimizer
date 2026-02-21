@@ -7,7 +7,10 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 from qiskit import QuantumCircuit
-from qiskit.circuit.library import efficient_su2, real_amplitudes
+from qiskit.circuit.library import (
+    efficient_su2 as build_efficient_su2_func,
+    real_amplitudes as build_real_amplitudes_func,
+)
 
 
 def build_real_amplitudes(
@@ -16,7 +19,17 @@ def build_real_amplitudes(
     entanglement: str | Sequence[Sequence[int]] = "reverse_linear",  # Reverse linear from paper
     insert_barriers: bool = False,
 ) -> QuantumCircuit:
-    return real_amplitudes(num_qubits=num_qubits, reps=reps, entanglement=entanglement, insert_barriers=insert_barriers)
+    """Construct RealAmplitudes ansatz using the modern functional builder.
+
+    Function-based builders are the preferred API in Qiskit 2.1+ (April 2025)
+    to reduce memory overhead and ensure future compatibility with Qiskit 3.0.
+    """
+    return build_real_amplitudes_func(
+        num_qubits=num_qubits,
+        reps=reps,
+        entanglement=entanglement,
+        insert_barriers=insert_barriers
+    )
 
 
 def build_cyclic_ansatz(num_qubits: int, reps: int = 1) -> QuantumCircuit:
@@ -35,7 +48,8 @@ def build_cyclic_ansatz(num_qubits: int, reps: int = 1) -> QuantumCircuit:
 
 
 def build_efficient_su2(num_qubits: int, reps: int = 1, entanglement: str = "linear") -> QuantumCircuit:
-    return efficient_su2(num_qubits=num_qubits, reps=reps, entanglement=entanglement)
+    """Construct EfficientSU2 ansatz using the modern functional builder."""
+    return build_efficient_su2_func(num_qubits=num_qubits, reps=reps, entanglement=entanglement)
 
 
 def get_ansatz(name: str, num_qubits: int, **kwargs) -> QuantumCircuit:

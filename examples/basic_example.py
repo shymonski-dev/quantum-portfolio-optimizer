@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+from qiskit.primitives import StatevectorEstimator, StatevectorSampler
 
 from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO
 from quantum_portfolio_optimizer.core.vqe_solver import PortfolioVQESolver
@@ -31,7 +32,17 @@ def main() -> None:
         penalty_strength=25.0,
     )
     qubo = builder.build()
-    solver = PortfolioVQESolver(seed=123, shots=None, progress_callback=progress_callback)
+    
+    # Use Statevector primitives for simulation
+    estimator = StatevectorEstimator(seed=123)
+    sampler = StatevectorSampler(seed=123)
+    
+    solver = PortfolioVQESolver(
+        estimator=estimator,
+        sampler=sampler,
+        seed=123,
+        progress_callback=progress_callback
+    )
     result = solver.solve(qubo)
 
     print("Optimal energy:", result.optimal_value)
