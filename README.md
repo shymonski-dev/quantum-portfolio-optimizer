@@ -24,6 +24,7 @@ backend_value_ibm_cloud: ibm_cloud
 isa_compliance: fully_supported
 ai_transpilation: supported
 ansatz_functional_builders: supported
+circuit_knitting_partitioning: supported
 cvar_qaoa: supported
 xy_mixer: supported
 esg_constraints: supported
@@ -56,6 +57,7 @@ Both QAOA variants support the **CVaR objective** (`cvar_alpha` ∈ (0,1]): eval
 ## Features
 
 - **2026 IBM Hardware Ready**: Full support for `ibm_cloud` channels, ISA-compliant circuits, and native Resilience V2 (Cloud-side ZNE).
+- **Dynamic Circuit Partitioning**: Supports "Circuit Knitting" via `qiskit-addon-cutting` to split large portfolios across multiple quantum processor modules (e.g., IBM Kookaburra architecture).
 - **AI-Enhanced Transpilation**: Leverages 2026-era AI passes to minimize gate counts and noise impact on chips like "Nighthawk" and "Flamingo."
 - **Functional Circuit Builders**: Migrated to modern Qiskit functional builders (`real_amplitudes`, `efficient_su2`) for reduced memory overhead and future-proofing.
 - **Multiple Algorithms**: VQE (recommended) and QAOA with X or XY mixer via the web UI

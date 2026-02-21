@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.1] - 2026-02-21
 
 ### Added
+- **Dynamic Circuit Partitioning**: Integration with `qiskit-addon-cutting` to support modular quantum hardware (IBM Kookaburra). Enables "cutting" of large portfolio circuits into smaller sectors for parallel execution.
 - **ISA Compliance**: Automatic transpilation to Instruction Set Architecture (ISA) for IBM Quantum hardware. Ensures circuits submitted to `EstimatorV2` and `SamplerV2` are optimized for the physical target chip.
 - **AI-Enhanced Transpilation**: Integrated 2026-era AI-driven circuit optimization to minimize gate depth and noise impact.
 - **Hardware-Native Mitigation**: Solvers now automatically leverage cloud-side Resilience Level 2 (ZNE) and skip slow client-side gate folding when running on hardware.

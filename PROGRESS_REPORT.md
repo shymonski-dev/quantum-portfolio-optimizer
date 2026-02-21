@@ -21,12 +21,14 @@ primary_backend_ibm: ibm_cloud
 isa_compliance: fully_supported
 ai_transpilation: supported
 ansatz_functional_builders: supported
+circuit_knitting: supported
 ```
 
 ## Completed Phases
 
 ### Phase 8 — 2026 Hardware Upgrade
 - **ISA Compliance**: Implemented automatic **Instruction Set Architecture (ISA)** transpilation for EstimatorV2 and SamplerV2. Circuits are now dynamically mapped to physical qubit layouts before submission to IBM hardware.
+- **Dynamic Circuit Partitioning**: Integrated **qiskit-addon-cutting** to support modular hardware (Kookaburra). Large portfolio circuits can now be "cut" into sectors and executed in parallel across multiple chips.
 - **AI-Enhanced Transpilation**: Integrated support for 2026-era AI-driven circuit optimization passes to minimize gate counts and improve fidelity on large-scale chips.
 - **Functional Circuit Migration**: Refactored the ansatz library to use modern Qiskit **functional builders** (`real_amplitudes`, `efficient_su2`) instead of deprecated class-based interfaces, ensuring compatibility with Qiskit 3.0.
 - **Adaptive Cloud Mitigation**: Solvers now auto-detect hardware-native **Resilience Level 2 (Cloud-ZNE)** and skip local client-side folding to leverage faster remote mitigation engines.
