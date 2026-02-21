@@ -1,7 +1,7 @@
 """Tests for data fetcher module including input validation."""
 
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import numpy as np
 import pandas as pd
@@ -108,67 +108,65 @@ class TestDateValidation:
 
 
 class TestFetchStockDataWithMocks:
-    """Test fetch_stock_data with mocked yfinance."""
+    """Test fetch_stock_data with mocked OpenBB."""
 
-    @patch("quantum_portfolio_optimizer.data.data_fetcher.yf.download")
-    def test_empty_response_raises_error(self, mock_download):
-        """Empty DataFrame from yfinance should raise MarketDataError."""
-        mock_download.return_value = pd.DataFrame()
-        with pytest.raises(MarketDataError, match="No data fetched"):
-            fetch_stock_data(["AAPL"], "2023-01-01", "2023-06-01")
+    @patch("quantum_portfolio_optimizer.data.data_fetcher.obb")
+    def test_empty_response_raises_error(self, mock_obb):
+        """Empty DataFrame from OpenBB should raise MarketDataError."""
+        mock_obb.equity.price.historical.return_value.to_df.return_value = pd.DataFrame()
+        with pytest.raises(MarketDataError, match="No data fetched|did not return 'close'"):
+            fetch_stock_data(["AAPL"], "2023-01-01", "2023-06-01", provider="tiingo")
 
-    @patch("quantum_portfolio_optimizer.data.data_fetcher.yf.download")
-    def test_empty_after_dropna_raises_error(self, mock_download):
+    @patch("quantum_portfolio_optimizer.data.data_fetcher.obb")
+    def test_empty_after_dropna_raises_error(self, mock_obb):
         """Empty DataFrame after dropna should raise MarketDataError."""
         # Return DataFrame with only NaN values
-        mock_download.return_value = pd.DataFrame({
-            ("Adj Close", "AAPL"): [None, None, None]
+        mock_obb.equity.price.historical.return_value.to_df.return_value = pd.DataFrame({
+            "close": [None, None, None]
         })
         with pytest.raises(MarketDataError, match="No valid data remaining"):
-            fetch_stock_data(["AAPL"], "2023-01-01", "2023-06-01")
+            fetch_stock_data(["AAPL"], "2023-01-01", "2023-06-01", provider="tiingo")
 
-    @patch("quantum_portfolio_optimizer.data.data_fetcher.yf.download")
-    def test_insufficient_data_points_raises_error(self, mock_download):
+    @patch("quantum_portfolio_optimizer.data.data_fetcher.obb")
+    def test_insufficient_data_points_raises_error(self, mock_obb):
         """Insufficient data points should raise InsufficientDataError."""
-        # Return DataFrame with only 5 rows for 10 tickers
         dates = pd.date_range("2023-01-01", periods=5)
         tickers = [f"T{i}" for i in range(10)]
-        data = pd.DataFrame(
-            100 + np.random.randn(5, 10),
-            index=dates,
-            columns=pd.MultiIndex.from_product([["Adj Close"], tickers])
-        )
-        mock_download.return_value = data
+        
+        def mock_hist(*args, **kwargs):
+            m = MagicMock()
+            m.to_df.return_value = pd.DataFrame({"close": [100.0] * 5}, index=dates)
+            return m
+        mock_obb.equity.price.historical.side_effect = mock_hist
 
         with pytest.raises(InsufficientDataError, match="Insufficient data"):
-            fetch_stock_data(tickers, "2023-01-01", "2023-06-01")
+            fetch_stock_data(tickers, "2023-01-01", "2023-06-01", provider="tiingo")
 
-    @patch("quantum_portfolio_optimizer.data.data_fetcher.yf.download")
-    def test_successful_fetch_returns_dataframe(self, mock_download):
+    @patch("quantum_portfolio_optimizer.data.data_fetcher.obb")
+    def test_successful_fetch_returns_dataframe(self, mock_obb):
         """Successful fetch should return proper DataFrame."""
         dates = pd.date_range("2023-01-01", periods=30)
-        data = pd.DataFrame(
-            100 + np.random.randn(30, 3).cumsum(axis=0),
-            index=dates,
-            columns=pd.MultiIndex.from_product([["Adj Close"], ["AAPL", "MSFT", "GOOGL"]])
-        )
-        mock_download.return_value = data
+        
+        def mock_hist(*args, **kwargs):
+            m = MagicMock()
+            m.to_df.return_value = pd.DataFrame({"close": [100.0] * 30}, index=dates)
+            return m
+        mock_obb.equity.price.historical.side_effect = mock_hist
 
-        result = fetch_stock_data(["AAPL", "MSFT", "GOOGL"], "2023-01-01", "2023-06-01")
+        result = fetch_stock_data(["AAPL", "MSFT", "GOOGL"], "2023-01-01", "2023-06-01", provider="tiingo")
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 30
+        assert list(result.columns) == ["AAPL", "MSFT", "GOOGL"]
         assert not result.empty
 
-    @patch("quantum_portfolio_optimizer.data.data_fetcher.yf.download")
-    def test_validation_called_before_fetch(self, mock_download):
+    @patch("quantum_portfolio_optimizer.data.data_fetcher.obb")
+    def test_validation_called_before_fetch(self, mock_obb):
         """Validation should catch errors before API call."""
-        # If validation works, this should fail before download is called
         with pytest.raises(InvalidTickerError, match="At least one ticker"):
-            fetch_stock_data([], "2023-01-01", "2023-06-01")
+            fetch_stock_data([], "2023-01-01", "2023-06-01", provider="tiingo")
 
-        # Verify download was never called
-        mock_download.assert_not_called()
+        mock_obb.equity.price.historical.assert_not_called()
 
 
 class TestEdgeCases:
@@ -213,17 +211,15 @@ class TestExceptionAttributes:
             assert "start_date" in e.details
             assert "end_date" in e.details
 
-    @patch("quantum_portfolio_optimizer.data.data_fetcher.yf.download")
-    def test_insufficient_data_error_has_details(self, mock_download):
+    @patch("quantum_portfolio_optimizer.data.data_fetcher.obb")
+    def test_insufficient_data_error_has_details(self, mock_obb):
         """InsufficientDataError should have data point details."""
         dates = pd.date_range("2023-01-01", periods=5)
         tickers = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"]
-        data = pd.DataFrame(
-            100 + np.random.randn(5, 10),
-            index=dates,
-            columns=pd.MultiIndex.from_product([["Adj Close"], tickers])
+        mock_obb.equity.price.historical.return_value.to_df.return_value = pd.DataFrame(
+            {"close": [100.0] * 5},
+            index=dates
         )
-        mock_download.return_value = data
 
         try:
             fetch_stock_data(tickers, "2023-01-01", "2023-06-01")

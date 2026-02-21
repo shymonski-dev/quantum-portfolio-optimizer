@@ -47,7 +47,7 @@ Both QAOA variants support the **CVaR objective** (`cvar_alpha` ∈ (0,1]): eval
 
 ### How It Works
 
-1. **Data Fetching**: Historical stock prices from Yahoo Finance
+1. **Data Fetching**: Institutional-grade market data via **OpenBB Platform SDK** (supporting Tiingo, yfinance, FMP, etc.)
 2. **Returns Calculation**: Logarithmic returns and covariance matrices
 3. **QUBO Formulation**: Portfolio optimization converted to a quantum-compatible form, with optional ESG scoring and CVaR risk objective
 4. **Quantum Optimization**: VQE or QAOA finds optimal asset allocations; **ISA-compliant transpilation** and **AI-enhanced optimization** used for IBM hardware.
@@ -104,6 +104,14 @@ export IBM_QUANTUM_TOKEN="your_api_key"
 # For IBM Cloud (Enterprise/U.S. East)
 export IBM_QUANTUM_TOKEN="your_iam_api_key"
 export IBM_CLOUD_INSTANCE="your_crn_instance"
+```
+
+# Institutional Data Setup (OpenBB)
+This software uses the **OpenBB Platform SDK** for high-fidelity data. While `yfinance` is available as a free fallback, professional users should configure **Tiingo** for adjusted data quality.
+
+```bash
+# Set your OpenBB credentials as environment variables
+export OPENBB_TIINGO_TOKEN="your_tiingo_key"
 ```
 
 ## Quick Start

@@ -23,6 +23,14 @@ backend:
   shots: 1024
   seed: 42
 
+# Institutional Data Configuration (OpenBB Platform)
+# To use Tiingo or FMP, set your API keys here or as environment variables
+# (e.g. OPENBB_TIINGO_TOKEN)
+data_source:
+  provider: "yfinance" # Options: "tiingo", "yfinance", "fmp", "polygon"
+  tiingo_token: ""     # Optional: Professional data token
+  fmp_token: ""        # Optional: Financial Modeling Prep token
+
 # IBM Quantum backend configuration (used when backend.name = "ibm_quantum")
 # Requires: pip install .[ibm] and QE_TOKEN environment variable
 ibm_quantum:

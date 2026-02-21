@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List
 
 import pandas as pd
-import yfinance as yf
+from openbb import obb
 
 from quantum_portfolio_optimizer.exceptions import (
     InsufficientDataError,
@@ -95,60 +95,79 @@ def validate_inputs(tickers: List[str], start_date: str, end_date: str) -> None:
         )
 
 
-def fetch_stock_data(tickers: List[str], start_date: str, end_date: str) -> pd.DataFrame:
+def fetch_stock_data(tickers: List[str], start_date: str, end_date: str, provider: str = "tiingo") -> pd.DataFrame:
     """
-    Fetches historical stock data from Yahoo Finance.
+    Fetches historical stock data using OpenBB SDK.
 
     Args:
         tickers (List[str]): A list of stock tickers.
         start_date (str): The start date for the data in 'YYYY-MM-DD' format.
         end_date (str): The end date for the data in 'YYYY-MM-DD' format.
+        provider (str): OpenBB data provider (default: 'tiingo').
 
     Returns:
-        pd.DataFrame: A DataFrame containing the adjusted close prices of the stocks,
+        pd.DataFrame: A DataFrame containing the close prices of the stocks,
                       with dates as the index and tickers as columns.
 
     Raises:
         InvalidTickerError: If ticker validation fails
         InvalidDateRangeError: If date validation fails
-        MarketDataError: If data fetch from yfinance fails
+        MarketDataError: If data fetch fails
         InsufficientDataError: If not enough data points are returned
     """
     # Validate inputs before making API call
     validate_inputs(tickers, start_date, end_date)
 
     try:
-        # Set auto_adjust=False to get a consistent multi-level column output
-        data = yf.download(tickers, start=start_date, end=end_date, auto_adjust=False)
+        # OpenBB Platform SDK call
+        # We use a loop for multiple tickers to ensure per-ticker error handling 
+        # and consistent DataFrame construction across different providers.
+        all_data = []
+        for ticker in tickers:
+            res = obb.equity.price.historical(
+                symbol=ticker,
+                start_date=start_date,
+                end_date=end_date,
+                provider=provider
+            ).to_df()
+            
+            # Select 'close' and rename to ticker
+            if "close" in res.columns:
+                series = res["close"]
+                series.name = ticker
+                all_data.append(series)
+            else:
+                raise MarketDataError(f"Provider {provider} did not return 'close' price for {ticker}")
+
+        df_close = pd.concat(all_data, axis=1)
+        
     except Exception as e:
         raise MarketDataError(
-            f"Failed to fetch data: {str(e)}"
+            f"Failed to fetch data from {provider}: {str(e)}",
+            provider=provider
         )
 
-    if data.empty:
+    if df_close.empty:
         raise MarketDataError(
-            "No data fetched. Check that ticker symbols are valid "
+            f"No data fetched from {provider}. Check that ticker symbols are valid "
             "and the date range contains trading days."
         )
 
-    # Select Adjusted Close prices and drop rows with any missing values
-    adj_close = data['Adj Close'].dropna()
-    if isinstance(adj_close, pd.Series):
-        # yfinance returns a Series for a single ticker; normalize to DataFrame for consistency.
-        adj_close = adj_close.to_frame(name=tickers[0])
+    # Cleanup missing values
+    df_close = df_close.dropna()
 
-    if adj_close.empty:
+    if df_close.empty:
         raise MarketDataError(
-            "No valid data remaining after removing missing values."
+            "No valid data remaining after removing missing values (possibly due to date mismatch)."
         )
 
     # Check minimum data points for reliable covariance estimation
     min_points = max(10, len(tickers) + 1)
-    if len(adj_close) < min_points:
+    if len(df_close) < min_points:
         raise InsufficientDataError(
             required=min_points,
-            actual=len(adj_close),
+            actual=len(df_close),
             tickers=tickers,
         )
 
-    return adj_close
+    return df_close

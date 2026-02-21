@@ -97,7 +97,8 @@ def optimize():
         use_warm_start = data.get('warm_start', True)  # Default enabled
         resolution_qubits = int(data.get('resolution_qubits', 1))  # Default binary
         
-        # Partitioning & Sectors (2026 Modular Hardware support)
+        # Data & Partitioning (2026 Modular Hardware support)
+        data_provider = data.get('data_provider', 'tiingo')
         use_partitioning = bool(data.get('use_partitioning', False))
         auto_cluster = bool(data.get('auto_cluster', False))
         sectors = data.get('sectors') # Optional Dict[str, List[int]]
@@ -123,15 +124,15 @@ def optimize():
             except (ValueError, TypeError):
                 num_assets_select = None
 
-        logger.info(f"Starting optimization: {tickers}, {start_date} to {end_date}")
+        logger.info(f"Starting optimization: {tickers}, {start_date} to {end_date} via {data_provider}")
         logger.info(f"Settings: algorithm={algorithm}, risk={risk_factor}, backend={backend_type}")
         if algorithm == 'vqe':
             logger.info(f"VQE Settings: ansatz={ansatz_type}, reps={reps}")
         else:
             logger.info(f"QAOA Settings: layers={qaoa_layers}")
 
-        # Fetch market data
-        stock_data = fetch_stock_data(tickers, start_date, end_date)
+        # Fetch market data via OpenBB
+        stock_data = fetch_stock_data(tickers, start_date, end_date, provider=data_provider)
 
         if stock_data.empty:
             return jsonify({'error': 'Failed to fetch stock data. Check tickers and dates.'}), 400

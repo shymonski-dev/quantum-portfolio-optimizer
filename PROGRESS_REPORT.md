@@ -131,7 +131,13 @@ Scale the current partitioning framework to the full **1,386-qubit multi-chip mo
 - All `YOUR_ORG` placeholders replaced with `shymonski-dev`
 - Test suite: **336 passing, 1 skipped**
 
-## Architecture (v0.2.0)
+## Phase 10 — Institutional AI & Data
+- **AI Sector Clustering**: Implemented **Spectral Min-Cut** graph partitioning to automatically identify hardware cut-points based on asset correlations.
+- **Institutional Data**: Migrated from brittle `yfinance` scraping to the **OpenBB Platform SDK**. Supports professional data sources like **Tiingo** and **Financial Modeling Prep** with built-in provider fallback.
+- **2026 UI Overhaul**: Added Data Provider selection, Auto-Clustering toggles, and Sector configuration to the web interface.
+- **336 tests passing** (1 skipped) — verified with OpenBB mocks.
+
+## Architecture (v0.2.1)
 
 ```
 User Interface (Flask — frontend/app.py)

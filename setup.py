@@ -22,11 +22,12 @@ setup(
         "matplotlib>=3.7.0",
         "scikit-learn>=1.3.0",
         "PyYAML>=6.0",
-        "yfinance>=0.2.0",
         "click>=8.0",
         "flask>=2.3.0",
         "qiskit-addon-cutting>=0.2.0",
         "networkx>=3.0",
+        "openbb-core>=1.6.0",
+        "openbb-equity>=1.6.0",
     ],
     extras_require={
         "dev": ["pytest>=7.0.0", "pytest-cov>=4.0", "ruff>=0.1.0"],
