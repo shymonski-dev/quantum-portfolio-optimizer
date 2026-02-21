@@ -55,9 +55,7 @@ class TestAllocationsToRotationAngles:
         """Adding noise should change the angles."""
         allocations = np.array([0.5, 0.5])
 
-        angles_no_noise = allocations_to_rotation_angles(
-            allocations, add_noise=False
-        )
+        angles_no_noise = allocations_to_rotation_angles(allocations, add_noise=False)
         angles_with_noise = allocations_to_rotation_angles(
             allocations, add_noise=True, seed=42
         )
@@ -79,7 +77,7 @@ class TestAllocationsToRotationAngles:
         angles = allocations_to_rotation_angles(allocations, add_noise=False)
 
         # After normalization, each is 1/3
-        expected = 2 * np.arcsin(np.sqrt(1/3))
+        expected = 2 * np.arcsin(np.sqrt(1 / 3))
         assert all(np.isclose(a, expected) for a in angles)
 
 
@@ -336,8 +334,12 @@ class TestEstimateInitialEnergy:
         expected_returns = np.array([0.1, 0.2])
         covariance = np.array([[0.04, 0.01], [0.01, 0.04]])
 
-        energy_low = estimate_initial_energy(allocations, expected_returns, covariance, 0.1)
-        energy_high = estimate_initial_energy(allocations, expected_returns, covariance, 10.0)
+        energy_low = estimate_initial_energy(
+            allocations, expected_returns, covariance, 0.1
+        )
+        energy_high = estimate_initial_energy(
+            allocations, expected_returns, covariance, 10.0
+        )
 
         assert energy_high > energy_low
 

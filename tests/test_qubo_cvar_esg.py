@@ -63,9 +63,7 @@ class TestESGConstraints:
 
     def test_zero_esg_weight_no_change(self):
         qubo_base = self._make_qubo()
-        qubo_esg = self._make_qubo(
-            esg_scores=np.array([0.8, 0.5, 0.9]), esg_weight=0.0
-        )
+        qubo_esg = self._make_qubo(esg_scores=np.array([0.8, 0.5, 0.9]), esg_weight=0.0)
         np.testing.assert_array_almost_equal(qubo_base.linear, qubo_esg.linear)
 
     def test_none_scores_no_change(self):

@@ -74,14 +74,30 @@ class TestIBMProviderWithMockedRuntime:
     @pytest.fixture
     def mock_runtime(self):
         """Create mocked qiskit-ibm-runtime components."""
-        with patch("quantum_portfolio_optimizer.simulation.ibm_provider.QiskitRuntimeService") as mock_service, \
-             patch("quantum_portfolio_optimizer.simulation.ibm_provider.EstimatorV2") as mock_estimator, \
-             patch("quantum_portfolio_optimizer.simulation.ibm_provider.SamplerV2") as mock_sampler, \
-             patch("quantum_portfolio_optimizer.simulation.ibm_provider.Session") as mock_session, \
-             patch("quantum_portfolio_optimizer.simulation.ibm_provider.EstimatorOptions") as mock_est_opts, \
-             patch("quantum_portfolio_optimizer.simulation.ibm_provider.SamplerOptions") as mock_samp_opts, \
-             patch("quantum_portfolio_optimizer.simulation.ibm_provider.IBM_RUNTIME_AVAILABLE", True):
-
+        with (
+            patch(
+                "quantum_portfolio_optimizer.simulation.ibm_provider.QiskitRuntimeService"
+            ) as mock_service,
+            patch(
+                "quantum_portfolio_optimizer.simulation.ibm_provider.EstimatorV2"
+            ) as mock_estimator,
+            patch(
+                "quantum_portfolio_optimizer.simulation.ibm_provider.SamplerV2"
+            ) as mock_sampler,
+            patch(
+                "quantum_portfolio_optimizer.simulation.ibm_provider.Session"
+            ) as mock_session,
+            patch(
+                "quantum_portfolio_optimizer.simulation.ibm_provider.EstimatorOptions"
+            ) as mock_est_opts,
+            patch(
+                "quantum_portfolio_optimizer.simulation.ibm_provider.SamplerOptions"
+            ) as mock_samp_opts,
+            patch(
+                "quantum_portfolio_optimizer.simulation.ibm_provider.IBM_RUNTIME_AVAILABLE",
+                True,
+            ),
+        ):
             # Configure mock service
             mock_backend = MagicMock()
             mock_backend.name = "ibm_test"
@@ -157,7 +173,9 @@ class TestIBMProviderWithMockedRuntime:
         ibm_provider._session_backend = None
 
         # Configure backend lookup to fail
-        mock_runtime["service_instance"].backend.side_effect = Exception("Backend not found")
+        mock_runtime["service_instance"].backend.side_effect = Exception(
+            "Backend not found"
+        )
 
         # Configure available backends
         mock_available = MagicMock()
@@ -218,7 +236,9 @@ class TestIBMProviderWithMockedRuntime:
         mock_runtime["session_instance"].close.assert_called_once()
         assert ibm_provider._active_session is None
 
-    def test_config_token_takes_precedence_over_environment(self, mock_runtime, monkeypatch):
+    def test_config_token_takes_precedence_over_environment(
+        self, mock_runtime, monkeypatch
+    ):
         """Configuration token should be used before environment token."""
         from quantum_portfolio_optimizer.simulation import ibm_provider
 
@@ -234,7 +254,9 @@ class TestIBMProviderWithMockedRuntime:
             captured["instance"] = instance
             return mock_runtime["service_instance"]
 
-        monkeypatch.setattr(ibm_provider, "_get_runtime_service", fake_get_runtime_service)
+        monkeypatch.setattr(
+            ibm_provider, "_get_runtime_service", fake_get_runtime_service
+        )
         monkeypatch.setenv("QE_TOKEN", "env-token")
 
         config = {
@@ -258,7 +280,9 @@ class TestErrorMitigationConfig:
 
     def test_default_config_values(self):
         """ErrorMitigationConfig should have sensible defaults for 2026."""
-        from quantum_portfolio_optimizer.simulation.ibm_provider import ErrorMitigationConfig
+        from quantum_portfolio_optimizer.simulation.ibm_provider import (
+            ErrorMitigationConfig,
+        )
 
         config = ErrorMitigationConfig()
 
@@ -269,7 +293,9 @@ class TestErrorMitigationConfig:
 
     def test_custom_config_values(self):
         """ErrorMitigationConfig should accept custom values."""
-        from quantum_portfolio_optimizer.simulation.ibm_provider import ErrorMitigationConfig
+        from quantum_portfolio_optimizer.simulation.ibm_provider import (
+            ErrorMitigationConfig,
+        )
 
         config = ErrorMitigationConfig(
             zne_enabled=True,

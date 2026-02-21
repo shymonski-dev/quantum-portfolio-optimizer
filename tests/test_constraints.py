@@ -166,7 +166,9 @@ class TestConstraintManager:
         manager.add("budget", EqualityConstraint(target=1.0))
         manager.add("max", InequalityConstraint(limit=0.5))
 
-        allocations = np.array([0.4, 0.4])  # Sum = 0.8, budget violation = 0.2, max violation = 0.3
+        allocations = np.array(
+            [0.4, 0.4]
+        )  # Sum = 0.8, budget violation = 0.2, max violation = 0.3
         violation = manager.total_violation(allocations)
         assert violation == pytest.approx(0.5)  # 0.2 + 0.3
 

@@ -1,6 +1,7 @@
 # quantum_portfolio_optimizer/test_ibm_import.py
 try:
-    from qiskit_ibm_provider import IBMProvider
+    from qiskit_ibm_provider import IBMProvider  # noqa: F401
+
     print("IBMProvider imported successfully.")
 except ImportError as e:
     print(f"Failed to import IBMProvider: {e}")

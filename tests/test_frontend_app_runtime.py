@@ -47,7 +47,9 @@ def test_optimize_ibm_request_does_not_mutate_environment(monkeypatch):
     module = _load_frontend_module()
     client = module.app.test_client()
 
-    monkeypatch.setattr(module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices())
+    monkeypatch.setattr(
+        module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices()
+    )
 
     captured = {}
 
@@ -85,7 +87,9 @@ def test_optimize_passes_gate_folding_config_to_variational_solver(monkeypatch):
     module = _load_frontend_module()
     client = module.app.test_client()
 
-    monkeypatch.setattr(module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices())
+    monkeypatch.setattr(
+        module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices()
+    )
     monkeypatch.setattr(module, "get_provider", lambda _config: (object(), object()))
 
     captured = {}

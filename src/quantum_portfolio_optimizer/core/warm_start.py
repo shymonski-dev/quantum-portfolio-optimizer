@@ -256,9 +256,7 @@ def warm_start_qaoa(
         # Estimate energy scale from QUBO coefficients
         linear_scale = np.abs(qubo_linear).mean() if len(qubo_linear) > 0 else 1.0
         quad_scale = (
-            np.abs(qubo_quadratic).mean()
-            if qubo_quadratic.size > 0
-            else linear_scale
+            np.abs(qubo_quadratic).mean() if qubo_quadratic.size > 0 else linear_scale
         )
         energy_scale = max(linear_scale, quad_scale, 1e-6)
 
@@ -273,7 +271,9 @@ def warm_start_qaoa(
                 beta_p = (np.pi / 4) * (1.0 - 0.5 * t)
                 params.extend([gamma_p, beta_p])
             initial_parameters = np.clip(params, 0, 2 * np.pi)
-            gamma_reference = float(initial_parameters[0]) if len(initial_parameters) else 0.0
+            gamma_reference = (
+                float(initial_parameters[0]) if len(initial_parameters) else 0.0
+            )
         else:
             # Initialize gamma based on energy scale
             # Optimal gamma is typically O(1/energy_scale)
@@ -300,11 +300,15 @@ def warm_start_qaoa(
 
         # Add small noise for symmetry breaking
         if config.noise_scale > 0:
-            noise = rng.normal(0, config.noise_scale * 0.1, size=initial_parameters.shape)
+            noise = rng.normal(
+                0, config.noise_scale * 0.1, size=initial_parameters.shape
+            )
             initial_parameters = initial_parameters + noise
 
         # Clip to valid ranges
-        initial_parameters[::2] = np.clip(initial_parameters[::2], 0, 2 * np.pi)  # gamma
+        initial_parameters[::2] = np.clip(
+            initial_parameters[::2], 0, 2 * np.pi
+        )  # gamma
         initial_parameters[1::2] = np.clip(initial_parameters[1::2], 0, np.pi)  # beta
 
         # Get classical allocations if available

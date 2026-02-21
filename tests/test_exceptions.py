@@ -128,8 +128,7 @@ class TestExceptionAttributes:
     def test_ibm_backend_not_found_attributes(self):
         """IBMBackendNotFoundError should have backend details."""
         err = IBMBackendNotFoundError(
-            backend_name="ibm_fake",
-            available_backends=["ibm_brisbane", "ibm_kyoto"]
+            backend_name="ibm_fake", available_backends=["ibm_brisbane", "ibm_kyoto"]
         )
         assert err.backend_name == "ibm_fake"
         assert err.available_backends == ["ibm_brisbane", "ibm_kyoto"]
@@ -177,8 +176,7 @@ class TestExceptionToDict:
     def test_ibm_backend_not_found_to_dict(self):
         """IBMBackendNotFoundError.to_dict() should include available backends."""
         err = IBMBackendNotFoundError(
-            backend_name="fake_backend",
-            available_backends=["real_backend"]
+            backend_name="fake_backend", available_backends=["real_backend"]
         )
         d = err.to_dict()
 

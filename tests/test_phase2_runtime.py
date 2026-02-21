@@ -3,7 +3,9 @@
 import numpy as np
 
 from quantum_portfolio_optimizer.benchmarks import phase2
-from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
+from quantum_portfolio_optimizer.core.optimizer_interface import (
+    DifferentialEvolutionConfig,
+)
 
 
 def test_make_optimizer_config_returns_differential_evolution_config():

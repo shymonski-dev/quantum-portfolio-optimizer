@@ -14,7 +14,9 @@ from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
 
 from ..simulation.zne import fold_circuit, zne_extrapolate
-from ..simulation.partitioning import run_partitioned_vqe_step # Can be used for QAOA energy too
+from ..simulation.partitioning import (
+    run_partitioned_vqe_step,
+)  # Can be used for QAOA energy too
 from .optimizer_interface import DifferentialEvolutionConfig, run_differential_evolution
 from .qubo_formulation import QUBOProblem
 
@@ -61,7 +63,7 @@ class PortfolioQAOASolver:
         cvar_alpha: float = 1.0,
         mixer_type: str = "x",
         num_assets: Optional[int] = None,
-        use_partitioning: bool = False, # 2026 Modular Hardware support
+        use_partitioning: bool = False,  # 2026 Modular Hardware support
     ) -> None:
         """Initialize QAOA solver.
 
@@ -87,7 +89,7 @@ class PortfolioQAOASolver:
                 "estimator parameter is deprecated and will be removed in a future version. "
                 "QAOA uses Sampler primitive only.",
                 DeprecationWarning,
-                stacklevel=2
+                stacklevel=2,
             )
         if not (0 < cvar_alpha <= 1.0):
             raise ValueError(f"cvar_alpha must be in (0, 1], got {cvar_alpha}")
@@ -108,7 +110,9 @@ class PortfolioQAOASolver:
         self.num_assets = num_assets
         self.use_partitioning = use_partitioning
 
-    def _build_qaoa_circuit(self, qubo: QUBOProblem) -> Tuple[QuantumCircuit, List[Parameter]]:
+    def _build_qaoa_circuit(
+        self, qubo: QUBOProblem
+    ) -> Tuple[QuantumCircuit, List[Parameter]]:
         """Build parameterized QAOA circuit for the given QUBO.
 
         QAOA circuit structure:
@@ -264,7 +268,7 @@ class PortfolioQAOASolver:
         from qiskit.circuit.library import StatePreparation
 
         # Build statevector: 1/sqrt(C(n,k)) for all weight-k basis states, 0 elsewhere
-        n_states = 2 ** n_qubits
+        n_states = 2**n_qubits
         sv = np.zeros(n_states, dtype=complex)
 
         amplitude = 1.0 / np.sqrt(comb(n_qubits, k))
@@ -295,6 +299,7 @@ class PortfolioQAOASolver:
         """
         try:
             from qiskit.circuit.library import XXPlusYYGate
+
             for i in range(n_qubits):
                 for j in range(i + 1, n_qubits):
                     # XXPlusYYGate(theta, beta_phase)
@@ -313,7 +318,9 @@ class PortfolioQAOASolver:
                     qc.cx(j, i)
                     qc.rz(np.pi / 2, j)
 
-    def _run_circuit_and_get_objective(self, bound_circuit: QuantumCircuit, qubo: QUBOProblem) -> float:
+    def _run_circuit_and_get_objective(
+        self, bound_circuit: QuantumCircuit, qubo: QUBOProblem
+    ) -> float:
         """Run sampler on bound_circuit, extract counts, compute objective (CVaR or expectation)."""
         measured = bound_circuit.copy()
         measured.measure_all()
@@ -321,7 +328,10 @@ class PortfolioQAOASolver:
         # ISA Transpilation for hardware (2026 Requirement)
         if hasattr(self.sampler, "backend"):
             try:
-                from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+                from qiskit.transpiler.preset_passmanagers import (
+                    generate_preset_pass_manager,
+                )
+
                 backend = self.sampler.backend
                 pm = generate_preset_pass_manager(optimization_level=3, backend=backend)
                 isa_measured = pm.run(measured)
@@ -343,12 +353,14 @@ class PortfolioQAOASolver:
 
         # Build energy and count arrays for _compute_objective (supports CVaR)
         bitstrings = list(counts.keys())
-        energies = np.array([
-            self._evaluate_qubo_energy(
-                np.array([int(b) for b in bs[::-1]], dtype=float), qubo
-            )
-            for bs in bitstrings
-        ])
+        energies = np.array(
+            [
+                self._evaluate_qubo_energy(
+                    np.array([int(b) for b in bs[::-1]], dtype=float), qubo
+                )
+                for bs in bitstrings
+            ]
+        )
         counts_array = np.array([counts[bs] for bs in bitstrings], dtype=float)
 
         return self._compute_objective(energies, counts_array)
@@ -402,8 +414,10 @@ class PortfolioQAOASolver:
             try:
                 # Check for IBM SamplerV2 resilience level
                 options = getattr(self.sampler, "options", None)
-                if options and getattr(options, "resilience_level", 0) >= 1: # Sampler V2 has resilience
-                     has_native_resilience = True
+                if (
+                    options and getattr(options, "resilience_level", 0) >= 1
+                ):  # Sampler V2 has resilience
+                    has_native_resilience = True
             except Exception:
                 pass
 
@@ -449,7 +463,7 @@ class PortfolioQAOASolver:
         bounds = []
         for _ in range(self.layers):
             bounds.append((0, 2 * np.pi))  # gamma
-            bounds.append((0, np.pi))      # beta
+            bounds.append((0, np.pi))  # beta
 
         config = self.optimizer_config
         if config is None:
@@ -469,7 +483,9 @@ class PortfolioQAOASolver:
             )
 
         # Run optimization
-        result = run_differential_evolution(objective, config=config, num_qubits=num_qubits)
+        result = run_differential_evolution(
+            objective, config=config, num_qubits=num_qubits
+        )
         optimal_parameters = np.asarray(result.x, dtype=float)
         optimal_value = float(result.fun)
 
@@ -486,7 +502,9 @@ class PortfolioQAOASolver:
             job = self.sampler.run([measured_circuit], shots=self.shots)
 
         final_result = job.result()
-        measurement_counts = self._extract_counts(final_result, num_qubits, shots=self.shots)
+        measurement_counts = self._extract_counts(
+            final_result, num_qubits, shots=self.shots
+        )
         best_bitstring = max(measurement_counts, key=measurement_counts.get)
 
         logger.info(f"QAOA optimization complete. Best bitstring: {best_bitstring}")

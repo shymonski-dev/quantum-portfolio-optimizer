@@ -1,4 +1,5 @@
 """Tests for provider-agnostic ZNE via gate folding."""
+
 import numpy as np
 import pytest
 from qiskit import QuantumCircuit
@@ -47,13 +48,12 @@ class TestZNEFolding:
     def test_fold_factor_1_is_identity_on_statevector(self):
         """Folded circuit (nf=1) should have identical unitary to original."""
         from qiskit.quantum_info import Operator
+
         qc = QuantumCircuit(2)
         qc.h(0)
         qc.cx(0, 1)
         folded = fold_circuit(qc, 1)
-        assert np.allclose(
-            Operator(qc).data, Operator(folded).data, atol=1e-10
-        )
+        assert np.allclose(Operator(qc).data, Operator(folded).data, atol=1e-10)
 
 
 class TestZNEExtrapolation:

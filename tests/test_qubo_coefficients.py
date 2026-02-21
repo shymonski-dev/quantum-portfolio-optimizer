@@ -34,11 +34,7 @@ class TestQUBOMatrixSymmetry:
         # Valid symmetric matrix
         qubo = make_simple_qubo(
             linear=[0.1, 0.2, 0.3],
-            quadratic=[
-                [0.0, 0.5, 0.3],
-                [0.5, 0.0, 0.2],
-                [0.3, 0.2, 0.0]
-            ],
+            quadratic=[[0.0, 0.5, 0.3], [0.5, 0.0, 0.2], [0.3, 0.2, 0.0]],
         )
         assert np.allclose(qubo.quadratic, qubo.quadratic.T)
 
@@ -49,19 +45,21 @@ class TestQUBOMatrixSymmetry:
                 linear=[0.1, 0.2],
                 quadratic=[
                     [0.0, 0.5],
-                    [0.3, 0.0]  # Asymmetric: 0.3 != 0.5
+                    [0.3, 0.0],  # Asymmetric: 0.3 != 0.5
                 ],
             )
 
     def test_portfolio_qubo_produces_symmetric(self):
         """PortfolioQUBO.build() should always produce symmetric matrix."""
         expected_returns = np.array([0.02, 0.015, 0.01, 0.025])
-        covariance = np.array([
-            [0.10, 0.02, 0.01, 0.03],
-            [0.02, 0.08, 0.015, 0.02],
-            [0.01, 0.015, 0.05, 0.01],
-            [0.03, 0.02, 0.01, 0.12],
-        ])
+        covariance = np.array(
+            [
+                [0.10, 0.02, 0.01, 0.03],
+                [0.02, 0.08, 0.015, 0.02],
+                [0.01, 0.015, 0.05, 0.01],
+                [0.03, 0.02, 0.01, 0.12],
+            ]
+        )
 
         builder = PortfolioQUBO(
             expected_returns=expected_returns,
@@ -88,11 +86,7 @@ class TestQUBOEnergyConsistency:
         """Energy should be: E(x) = offset + linear·x + x^T·Q·x."""
         qubo = make_simple_qubo(
             linear=[1.0, -2.0, 0.5],
-            quadratic=[
-                [0.0, 0.3, 0.1],
-                [0.3, 0.0, 0.2],
-                [0.1, 0.2, 0.0]
-            ],
+            quadratic=[[0.0, 0.3, 0.1], [0.3, 0.0, 0.2], [0.1, 0.2, 0.0]],
             offset=5.0,
         )
 
@@ -115,7 +109,9 @@ class TestQUBOEnergyConsistency:
                 qubo.offset + linear_term + quadratic_term
             ), f"Energy calculation wrong for bitstring {bits}"
 
-    @pytest.mark.skip(reason="Test formula needs review - to_ising() implementation verified elsewhere")
+    @pytest.mark.skip(
+        reason="Test formula needs review - to_ising() implementation verified elsewhere"
+    )
     def test_ising_conversion_preserves_energy(self):
         """to_ising() conversion should preserve energy spectrum.
 
@@ -147,9 +143,7 @@ class TestQUBOEnergyConsistency:
 
             # Ising energy: E = offset + sum(h_i * s_i) + sum(J_ij * s_i * s_j)
             ising_energy = (
-                ising_offset
-                + np.dot(h, spins)
-                + np.dot(spins, np.dot(J, spins))
+                ising_offset + np.dot(h, spins) + np.dot(spins, np.dot(J, spins))
             )
 
             assert qubo_energy == pytest.approx(ising_energy, rel=1e-9), (
@@ -161,11 +155,7 @@ class TestQUBOEnergyConsistency:
         """to_pauli() should create valid SparsePauliOp."""
         qubo = make_simple_qubo(
             linear=[0.5, -0.3, 0.2],
-            quadratic=[
-                [0.0, 0.4, 0.1],
-                [0.4, 0.0, 0.2],
-                [0.1, 0.2, 0.0]
-            ],
+            quadratic=[[0.0, 0.4, 0.1], [0.4, 0.0, 0.2], [0.1, 0.2, 0.0]],
             offset=1.0,
         )
 
@@ -230,10 +220,12 @@ class TestQUBOConstraintSatisfaction:
         # Asset 0: High return, high variance
         # Asset 1: Low return, low variance
         expected_returns = np.array([0.2, 0.05])
-        covariance = np.array([
-            [0.10, 0.01],  # Asset 0: variance 0.10
-            [0.01, 0.02]   # Asset 1: variance 0.02
-        ])
+        covariance = np.array(
+            [
+                [0.10, 0.01],  # Asset 0: variance 0.10
+                [0.01, 0.02],  # Asset 1: variance 0.02
+            ]
+        )
 
         # Low risk aversion - should prefer high return
         low_risk_builder = PortfolioQUBO(
@@ -269,6 +261,7 @@ class TestQUBOConstraintSatisfaction:
                     + np.dot(qubo.linear, x)
                     + np.dot(x, np.dot(qubo.quadratic, x))
                 )
+
             best_bits = min([[0, 0], [1, 0], [0, 1], [1, 1]], key=energy)
             return best_bits
 

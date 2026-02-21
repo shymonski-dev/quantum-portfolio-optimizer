@@ -7,8 +7,7 @@ from typing import Union
 
 
 def calculate_logarithmic_returns(
-    prices: Union[np.ndarray, pd.DataFrame],
-    time_window: int = 30
+    prices: Union[np.ndarray, pd.DataFrame], time_window: int = 30
 ) -> np.ndarray:
     """
     Calculate logarithmic returns: μt,a = log(Pt+1,a/Pt,a)
@@ -24,7 +23,7 @@ def calculate_logarithmic_returns(
         warnings.warn(
             "time_window parameter has no effect and will be removed in a future version",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
 
     if isinstance(prices, pd.DataFrame):
@@ -41,8 +40,7 @@ def calculate_logarithmic_returns(
 
 
 def calculate_rolling_covariance(
-    returns: Union[np.ndarray, pd.DataFrame],
-    window: int = 30
+    returns: Union[np.ndarray, pd.DataFrame], window: int = 30
 ) -> np.ndarray:
     """
     Calculate rolling covariance matrix over specified window.

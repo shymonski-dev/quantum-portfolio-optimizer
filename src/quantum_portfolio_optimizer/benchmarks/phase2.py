@@ -39,8 +39,12 @@ class BenchmarkResult:
     cache_metadata: Optional[Dict[str, str]] = None
 
 
-def build_phase2_qubo(num_assets: int = 3, num_steps: int = 2, seed: int = 42) -> PortfolioQUBO:
-    dataset = generate_synthetic_dataset(num_assets=num_assets, num_points=64, seed=seed)
+def build_phase2_qubo(
+    num_assets: int = 3, num_steps: int = 2, seed: int = 42
+) -> PortfolioQUBO:
+    dataset = generate_synthetic_dataset(
+        num_assets=num_assets, num_points=64, seed=seed
+    )
     mu = dataset.returns.mean().values
     covariance = np.cov(dataset.returns.values.T)
     return PortfolioQUBO(
@@ -84,7 +88,7 @@ def benchmark_ansatze(
                 "ansatz_name": name,
                 "ansatz_options": options,
                 "optimizer": asdict(opt_config),
-                "shots": getattr(estimator, 'shots', None),
+                "shots": getattr(estimator, "shots", None),
             }
             cache_key = deterministic_hash(payload)
             cached = read_json_cache(cache_dir, cache_key)
@@ -188,19 +192,29 @@ def summarize_results(results: List[BenchmarkResult]) -> None:
         print("Mean energy:", statistics.mean(opt_values))
 
 
-def analyse_initialisations(num_qubits: int = 6, sample_count: int = 64, seed: int = 7) -> Dict[str, Dict[str, Dict[str, float]]]:
-    family = generate_ansatz_family(num_qubits=num_qubits, include_cyclic=False, include_efficient=False)
+def analyse_initialisations(
+    num_qubits: int = 6, sample_count: int = 64, seed: int = 7
+) -> Dict[str, Dict[str, Dict[str, float]]]:
+    family = generate_ansatz_family(
+        num_qubits=num_qubits, include_cyclic=False, include_efficient=False
+    )
     circuits = {f"real_{idx}": circuit for idx, circuit in enumerate(family)}
     strategies = ["zeros", "uniform_small", "uniform", "normal"]
     summary: Dict[str, Dict[str, Dict[str, float]]] = {}
     for name, circuit in circuits.items():
-        stats = evaluate_initialisations(circuit, strategies=strategies, sample_count=sample_count, seed=seed)
+        stats = evaluate_initialisations(
+            circuit, strategies=strategies, sample_count=sample_count, seed=seed
+        )
         summary[name] = stats
     return summary
 
 
 def energy_from_bitstring(bits: np.ndarray, qubo_problem) -> float:
-    return float(qubo_problem.offset + qubo_problem.linear @ bits + bits @ qubo_problem.quadratic @ bits)
+    return float(
+        qubo_problem.offset
+        + qubo_problem.linear @ bits
+        + bits @ qubo_problem.quadratic @ bits
+    )
 
 
 def evaluate_noise_levels(
@@ -212,16 +226,23 @@ def evaluate_noise_levels(
     shots: int = 4096,
     seed: int = 123,
 ) -> List[Tuple[float, float]]:
-    ansatz = get_ansatz(ansatz_name, num_qubits=qubo_problem.num_variables, **ansatz_options)
+    ansatz = get_ansatz(
+        ansatz_name, num_qubits=qubo_problem.num_variables, **ansatz_options
+    )
     circuit = ansatz.assign_parameters(parameters)
     circuit_measure = circuit.copy()
     circuit_measure.measure_all()
     results = []
     for level in noise_levels:
         noise_model = simple_depolarising_noise(p_one=level, p_two=2 * level)
-        backend_config = {"name": "local_simulator", "shots": shots, "seed": seed, "noise_model": noise_model}
+        backend_config = {
+            "name": "local_simulator",
+            "shots": shots,
+            "seed": seed,
+            "noise_model": noise_model,
+        }
         _, sampler = get_provider(backend_config)
-        
+
         # Handle V1/V2 primitive differences
         try:
             # V2 interface
@@ -238,7 +259,10 @@ def evaluate_noise_levels(
             # Extract counts from V1 result (quasi_dists)
             dist = job_result.quasi_dists[0]
             total_shots = shots or 1024
-            counts = {format(k, f"0{qubo_problem.num_variables}b"): v * total_shots for k, v in dist.items()}
+            counts = {
+                format(k, f"0{qubo_problem.num_variables}b"): v * total_shots
+                for k, v in dist.items()
+            }
 
         energy = 0.0
         num_vars = qubo_problem.num_variables
@@ -251,7 +275,9 @@ def evaluate_noise_levels(
     return results
 
 
-def run_phase2_benchmark(cache_dir: Optional[Path] = None, use_cache: bool = True) -> None:
+def run_phase2_benchmark(
+    cache_dir: Optional[Path] = None, use_cache: bool = True
+) -> None:
     qubo_builder = build_phase2_qubo()
     configs = [
         ("real_amplitudes", {"reps": 2, "entanglement": "reverse_linear"}),
@@ -261,14 +287,23 @@ def run_phase2_benchmark(cache_dir: Optional[Path] = None, use_cache: bool = Tru
     ]
     if cache_dir is None:
         cache_dir = Path(".benchmark_cache")
-    
+
     backend_config = {"name": "local_simulator", "shots": 4096, "seed": 123}
     estimator, _ = get_provider(backend_config)
 
-    results = benchmark_ansatze(qubo_builder, configs, make_optimizer_config, estimator, cache_dir=cache_dir, use_cache=use_cache)
+    results = benchmark_ansatze(
+        qubo_builder,
+        configs,
+        make_optimizer_config,
+        estimator,
+        cache_dir=cache_dir,
+        use_cache=use_cache,
+    )
     summarize_results(results)
 
-    init_summary = analyse_initialisations(num_qubits=qubo_builder.build().num_variables)
+    init_summary = analyse_initialisations(
+        num_qubits=qubo_builder.build().num_variables
+    )
     for name, stats in init_summary.items():
         print(f"Initialisation stats for {name}:")
         for strategy, values in stats.items():
@@ -279,15 +314,15 @@ def run_phase2_benchmark(cache_dir: Optional[Path] = None, use_cache: bool = Tru
 
     problem = qubo_builder.build()
     best = min(results, key=lambda r: r.optimal_value)
-    
+
     try:
         noise_levels = [0.0, 0.001, 0.005]
         noise_results = evaluate_noise_levels(
-            problem, 
-            best.ansatz_name, 
-            best.ansatz_options, 
-            best.optimal_parameters, 
-            noise_levels
+            problem,
+            best.ansatz_name,
+            best.ansatz_options,
+            best.optimal_parameters,
+            noise_levels,
         )
         print("Noise impact (depolarising p1, p2=2p1):")
         for level, energy in noise_results:

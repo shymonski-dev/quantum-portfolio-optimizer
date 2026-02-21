@@ -15,16 +15,22 @@ except ImportError:  # pragma: no cover
     depolarizing_error = None  # type: ignore
 
 
-def simple_depolarising_noise(p_one: float = 0.001, p_two: float = 0.01) -> Optional["NoiseModel"]:
+def simple_depolarising_noise(
+    p_one: float = 0.001, p_two: float = 0.01
+) -> Optional["NoiseModel"]:
     if NoiseModel is None or depolarizing_error is None:
         return None
     noise_model = NoiseModel()
-    noise_model.add_all_qubit_quantum_error(depolarizing_error(p_one, 1), ["x", "y", "z", "h", "rx", "ry", "rz"])
+    noise_model.add_all_qubit_quantum_error(
+        depolarizing_error(p_one, 1), ["x", "y", "z", "h", "rx", "ry", "rz"]
+    )
     noise_model.add_all_qubit_quantum_error(depolarizing_error(p_two, 2), ["cx"])
     return noise_model
 
 
-def simple_thermal_noise(t1: float = 50e3, t2: float = 70e3, gate_time: float = 50) -> Optional["NoiseModel"]:
+def simple_thermal_noise(
+    t1: float = 50e3, t2: float = 70e3, gate_time: float = 50
+) -> Optional["NoiseModel"]:
     if NoiseModel is None:
         return None
     noise_model = NoiseModel()

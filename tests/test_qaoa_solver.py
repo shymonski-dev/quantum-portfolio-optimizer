@@ -9,7 +9,9 @@ from quantum_portfolio_optimizer.core.qaoa_solver import (
     get_qaoa_circuit_depth,
 )
 from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO
-from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
+from quantum_portfolio_optimizer.core.optimizer_interface import (
+    DifferentialEvolutionConfig,
+)
 from quantum_portfolio_optimizer.simulation.provider import get_provider
 
 
@@ -17,11 +19,13 @@ from quantum_portfolio_optimizer.simulation.provider import get_provider
 def simple_qubo():
     """Create a simple 3-asset QUBO for testing."""
     expected_returns = np.array([0.01, 0.015, 0.008])
-    covariance = np.array([
-        [0.04, 0.01, 0.005],
-        [0.01, 0.05, 0.01],
-        [0.005, 0.01, 0.03],
-    ])
+    covariance = np.array(
+        [
+            [0.04, 0.01, 0.005],
+            [0.01, 0.05, 0.01],
+            [0.005, 0.01, 0.03],
+        ]
+    )
     builder = PortfolioQUBO(
         expected_returns=expected_returns,
         covariance=covariance,
@@ -127,7 +131,7 @@ class TestQAOASolve:
         assert isinstance(result, QAOAResult)
         assert result.best_bitstring is not None
         assert len(result.best_bitstring) >= 3
-        assert all(c in '01' for c in result.best_bitstring)
+        assert all(c in "01" for c in result.best_bitstring)
         assert result.measurement_counts is not None
         assert result.num_evaluations > 0
         assert len(result.history) == result.num_evaluations
@@ -293,9 +297,12 @@ class TestCVaRQAOA:
         """alpha=1.0 must reproduce the existing weighted-average behaviour."""
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
         from quantum_portfolio_optimizer.simulation.provider import get_provider
+
         _, sampler = get_provider({"name": "local_simulator", "shots": 256, "seed": 42})
         # Create solver with alpha=1.0 — should work identically to no alpha
-        solver = PortfolioQAOASolver(sampler=sampler, layers=1, shots=256, cvar_alpha=1.0)
+        solver = PortfolioQAOASolver(
+            sampler=sampler, layers=1, shots=256, cvar_alpha=1.0
+        )
         assert solver.cvar_alpha == 1.0
 
     def test_compute_objective_cvar_known_values(self):
@@ -303,6 +310,7 @@ class TestCVaRQAOA:
         import numpy as np
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
         from quantum_portfolio_optimizer.simulation.provider import get_provider
+
         _, sampler = get_provider({"name": "local_simulator", "shots": 100, "seed": 42})
         solver = PortfolioQAOASolver(sampler=sampler, layers=1, cvar_alpha=0.5)
 
@@ -318,6 +326,7 @@ class TestCVaRQAOA:
         """alpha=1.0 yields standard weighted average."""
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
         from quantum_portfolio_optimizer.simulation.provider import get_provider
+
         _, sampler = get_provider({"name": "local_simulator", "shots": 100, "seed": 42})
         solver = PortfolioQAOASolver(sampler=sampler, layers=1, cvar_alpha=1.0)
 
@@ -330,6 +339,7 @@ class TestCVaRQAOA:
         """alpha=0.5 returns the worst 50% average energy."""
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
         from quantum_portfolio_optimizer.simulation.provider import get_provider
+
         _, sampler = get_provider({"name": "local_simulator", "shots": 100, "seed": 42})
         solver = PortfolioQAOASolver(sampler=sampler, layers=1, cvar_alpha=0.5)
 
@@ -343,6 +353,7 @@ class TestCVaRQAOA:
         """alpha=0.1 returns the worst 10% average energy."""
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
         from quantum_portfolio_optimizer.simulation.provider import get_provider
+
         _, sampler = get_provider({"name": "local_simulator", "shots": 100, "seed": 42})
         solver = PortfolioQAOASolver(sampler=sampler, layers=1, cvar_alpha=0.1)
 
@@ -355,6 +366,7 @@ class TestCVaRQAOA:
     def test_cvar_alpha_zero_raises(self):
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
         from quantum_portfolio_optimizer.simulation.provider import get_provider
+
         _, sampler = get_provider({"name": "local_simulator", "shots": 100, "seed": 42})
         with pytest.raises(ValueError, match="cvar_alpha"):
             PortfolioQAOASolver(sampler=sampler, layers=1, cvar_alpha=0.0)
@@ -362,6 +374,7 @@ class TestCVaRQAOA:
     def test_cvar_alpha_above_one_raises(self):
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
         from quantum_portfolio_optimizer.simulation.provider import get_provider
+
         _, sampler = get_provider({"name": "local_simulator", "shots": 100, "seed": 42})
         with pytest.raises(ValueError, match="cvar_alpha"):
             PortfolioQAOASolver(sampler=sampler, layers=1, cvar_alpha=1.5)
@@ -370,16 +383,19 @@ class TestCVaRQAOA:
 class TestXYMixerQAOA:
     def _get_sampler(self):
         from quantum_portfolio_optimizer.simulation.provider import get_provider
+
         _, sampler = get_provider({"name": "local_simulator", "shots": 256, "seed": 42})
         return sampler
 
     def test_xy_mixer_requires_num_assets(self):
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
+
         with pytest.raises(ValueError, match="num_assets"):
             PortfolioQAOASolver(sampler=self._get_sampler(), layers=1, mixer_type="xy")
 
     def test_invalid_mixer_type_raises(self):
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
+
         with pytest.raises(ValueError, match="mixer_type"):
             PortfolioQAOASolver(sampler=self._get_sampler(), layers=1, mixer_type="rz")
 
@@ -432,7 +448,11 @@ class TestXYMixerQAOA:
         qubo = PortfolioQUBO(returns, cov, budget=1.0).build()
 
         solver = PortfolioQAOASolver(
-            sampler=self._get_sampler(), layers=1, mixer_type="xy", num_assets=2, shots=64
+            sampler=self._get_sampler(),
+            layers=1,
+            mixer_type="xy",
+            num_assets=2,
+            shots=64,
         )
         circuit, params = solver._build_qaoa_circuit(qubo)
         assert circuit is not None
@@ -442,7 +462,9 @@ class TestXYMixerQAOA:
         """After solve() with XY mixer, all measured bitstrings must have Hamming weight == num_assets."""
         from quantum_portfolio_optimizer.core.qaoa_solver import PortfolioQAOASolver
         from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO
-        from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
+        from quantum_portfolio_optimizer.core.optimizer_interface import (
+            DifferentialEvolutionConfig,
+        )
 
         returns = np.array([0.01, 0.015, 0.008, 0.012])
         cov = np.eye(4) * 0.05

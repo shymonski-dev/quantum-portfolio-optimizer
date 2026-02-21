@@ -4,6 +4,7 @@ Provider-agnostic Zero-Noise Extrapolation (ZNE) via gate folding.
 Works on local simulators and real hardware alike. Proven to give 31.6%
 improvement on IBM hardware for portfolio optimization problems (arXiv:2602.09047).
 """
+
 from __future__ import annotations
 
 import logging

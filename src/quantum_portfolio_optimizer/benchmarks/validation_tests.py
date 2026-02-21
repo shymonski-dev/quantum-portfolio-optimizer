@@ -35,9 +35,15 @@ def validate_small_instance(seed: Optional[int] = None) -> ValidationReport:
         max_investment=1.0,
     )
     qubo = builder.build()
-    estimator, _ = get_provider({"name": "local_simulator", "shots": None, "seed": seed})
+    estimator, _ = get_provider(
+        {"name": "local_simulator", "shots": None, "seed": seed}
+    )
     solver = PortfolioVQESolver(estimator=estimator, seed=seed)
     result = solver.solve(qubo)
 
     feasible = result.optimal_value <= 10.0  # simple sanity bound for tests
-    return ValidationReport(optimal_value=result.optimal_value, feasible=feasible, num_evaluations=result.num_evaluations)
+    return ValidationReport(
+        optimal_value=result.optimal_value,
+        feasible=feasible,
+        num_evaluations=result.num_evaluations,
+    )

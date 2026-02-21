@@ -3,7 +3,6 @@
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -113,17 +112,21 @@ class TestFetchStockDataWithMocks:
     @patch("quantum_portfolio_optimizer.data.data_fetcher.obb")
     def test_empty_response_raises_error(self, mock_obb):
         """Empty DataFrame from OpenBB should raise MarketDataError."""
-        mock_obb.equity.price.historical.return_value.to_df.return_value = pd.DataFrame()
-        with pytest.raises(MarketDataError, match="No data fetched|did not return 'close'"):
+        mock_obb.equity.price.historical.return_value.to_df.return_value = (
+            pd.DataFrame()
+        )
+        with pytest.raises(
+            MarketDataError, match="No data fetched|did not return 'close'"
+        ):
             fetch_stock_data(["AAPL"], "2023-01-01", "2023-06-01", provider="tiingo")
 
     @patch("quantum_portfolio_optimizer.data.data_fetcher.obb")
     def test_empty_after_dropna_raises_error(self, mock_obb):
         """Empty DataFrame after dropna should raise MarketDataError."""
         # Return DataFrame with only NaN values
-        mock_obb.equity.price.historical.return_value.to_df.return_value = pd.DataFrame({
-            "close": [None, None, None]
-        })
+        mock_obb.equity.price.historical.return_value.to_df.return_value = pd.DataFrame(
+            {"close": [None, None, None]}
+        )
         with pytest.raises(MarketDataError, match="No valid data remaining"):
             fetch_stock_data(["AAPL"], "2023-01-01", "2023-06-01", provider="tiingo")
 
@@ -132,11 +135,12 @@ class TestFetchStockDataWithMocks:
         """Insufficient data points should raise InsufficientDataError."""
         dates = pd.date_range("2023-01-01", periods=5)
         tickers = [f"T{i}" for i in range(10)]
-        
+
         def mock_hist(*args, **kwargs):
             m = MagicMock()
             m.to_df.return_value = pd.DataFrame({"close": [100.0] * 5}, index=dates)
             return m
+
         mock_obb.equity.price.historical.side_effect = mock_hist
 
         with pytest.raises(InsufficientDataError, match="Insufficient data"):
@@ -146,14 +150,17 @@ class TestFetchStockDataWithMocks:
     def test_successful_fetch_returns_dataframe(self, mock_obb):
         """Successful fetch should return proper DataFrame."""
         dates = pd.date_range("2023-01-01", periods=30)
-        
+
         def mock_hist(*args, **kwargs):
             m = MagicMock()
             m.to_df.return_value = pd.DataFrame({"close": [100.0] * 30}, index=dates)
             return m
+
         mock_obb.equity.price.historical.side_effect = mock_hist
 
-        result = fetch_stock_data(["AAPL", "MSFT", "GOOGL"], "2023-01-01", "2023-06-01", provider="tiingo")
+        result = fetch_stock_data(
+            ["AAPL", "MSFT", "GOOGL"], "2023-01-01", "2023-06-01", provider="tiingo"
+        )
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 30
@@ -217,8 +224,7 @@ class TestExceptionAttributes:
         dates = pd.date_range("2023-01-01", periods=5)
         tickers = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"]
         mock_obb.equity.price.historical.return_value.to_df.return_value = pd.DataFrame(
-            {"close": [100.0] * 5},
-            index=dates
+            {"close": [100.0] * 5}, index=dates
         )
 
         try:

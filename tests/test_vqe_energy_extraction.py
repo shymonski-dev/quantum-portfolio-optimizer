@@ -120,12 +120,12 @@ class TestVQEExtractCounts:
 
     def test_extract_counts_v2_interface(self):
         """Test count extraction from V2 Sampler result."""
-        mock_counts = {'00': 250, '01': 250, '10': 250, '11': 250}
+        mock_counts = {"00": 250, "01": 250, "10": 250, "11": 250}
         mock_bitarray = MagicMock()
         mock_bitarray.get_counts.return_value = mock_counts
 
         mock_data = MagicMock()
-        mock_data.keys.return_value = ['meas']
+        mock_data.keys.return_value = ["meas"]
         mock_data.meas = mock_bitarray
 
         mock_first = MagicMock()
@@ -136,18 +136,18 @@ class TestVQEExtractCounts:
 
         counts = PortfolioVQESolver._extract_counts(mock_result, num_qubits=2)
 
-        assert '00' in counts
-        assert '11' in counts
-        assert counts['00'] == 250
+        assert "00" in counts
+        assert "11" in counts
+        assert counts["00"] == 250
 
     def test_extract_counts_pads_bitstrings(self):
         """Bitstrings should be zero-padded to num_qubits length."""
-        mock_counts = {'0': 500, '1': 500}  # Single bit from result
+        mock_counts = {"0": 500, "1": 500}  # Single bit from result
         mock_bitarray = MagicMock()
         mock_bitarray.get_counts.return_value = mock_counts
 
         mock_data = MagicMock()
-        mock_data.keys.return_value = ['meas']
+        mock_data.keys.return_value = ["meas"]
         mock_data.meas = mock_bitarray
 
         mock_first = MagicMock()
@@ -159,6 +159,6 @@ class TestVQEExtractCounts:
         counts = PortfolioVQESolver._extract_counts(mock_result, num_qubits=3)
 
         # Should be padded to 3 characters
-        assert '000' in counts
-        assert '001' in counts
+        assert "000" in counts
+        assert "001" in counts
         assert len(list(counts.keys())[0]) == 3

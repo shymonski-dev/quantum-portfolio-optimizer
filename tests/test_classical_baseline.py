@@ -72,9 +72,7 @@ class TestMarkowitzBaseline:
         expected_returns = [0.05, 0.20]
         covariance = [[0.04, 0.01], [0.01, 0.04]]  # Same variance
 
-        result = markowitz_baseline(
-            expected_returns, covariance, risk_aversion=0.01
-        )
+        result = markowitz_baseline(expected_returns, covariance, risk_aversion=0.01)
 
         # Low risk aversion should favor high return asset
         assert result.allocations[1] > result.allocations[0]
@@ -88,9 +86,7 @@ class TestMarkowitzBaseline:
             [0.02, 0.01, 0.06],
         ]
 
-        result = markowitz_baseline(
-            expected_returns, covariance, bounds=(0.1, 0.5)
-        )
+        result = markowitz_baseline(expected_returns, covariance, bounds=(0.1, 0.5))
 
         assert all(0.1 - 1e-6 <= w <= 0.5 + 1e-6 for w in result.allocations)
 
@@ -106,16 +102,14 @@ class TestMarkowitzBaseline:
         result = markowitz_baseline(expected_returns, covariance)
 
         # All weights should be approximately equal
-        assert np.allclose(result.allocations, [1/3, 1/3, 1/3], atol=0.05)
+        assert np.allclose(result.allocations, [1 / 3, 1 / 3, 1 / 3], atol=0.05)
 
     def test_sharpe_ratio_calculation(self):
         """Sharpe ratio should be calculated correctly."""
         expected_returns = [0.1, 0.15]
         covariance = [[0.04, 0.01], [0.01, 0.06]]
 
-        result = markowitz_baseline(
-            expected_returns, covariance, risk_free_rate=0.02
-        )
+        result = markowitz_baseline(expected_returns, covariance, risk_free_rate=0.02)
 
         # Manual Sharpe calculation
         weights = result.allocations
@@ -189,12 +183,12 @@ class TestBaselineResultDataclass:
             message="Optimization successful",
         )
 
-        assert hasattr(result, 'allocations')
-        assert hasattr(result, 'expected_return')
-        assert hasattr(result, 'variance')
-        assert hasattr(result, 'sharpe_ratio')
-        assert hasattr(result, 'success')
-        assert hasattr(result, 'message')
+        assert hasattr(result, "allocations")
+        assert hasattr(result, "expected_return")
+        assert hasattr(result, "variance")
+        assert hasattr(result, "sharpe_ratio")
+        assert hasattr(result, "success")
+        assert hasattr(result, "message")
 
 
 class TestEdgeCases:

@@ -25,7 +25,9 @@ def cli() -> None:
 
 
 @cli.command()
-@click.option("--config", "-c", default="config.yaml", help="Path to the configuration file.")
+@click.option(
+    "--config", "-c", default="config.yaml", help="Path to the configuration file."
+)
 @click.option("--json-output", is_flag=True, help="Print full result as JSON.")
 @click.option(
     "--json-file",
@@ -85,7 +87,9 @@ def run(config: str, json_output: bool, json_file: str | None) -> None:
 
         risk_config = config_data.get("risk_model", {}).get("parameters", {}) or {}
         risk_factor = float(risk_config.get("risk_factor", 0.5))
-        risk_aversion = float(risk_config.get("risk_aversion", 100 + (1 - risk_factor) * 9900))
+        risk_aversion = float(
+            risk_config.get("risk_aversion", 100 + (1 - risk_factor) * 9900)
+        )
         risk_metric = str(risk_config.get("risk_metric", "variance"))
         cvar_confidence = float(risk_config.get("cvar_confidence", 0.95))
         esg_scores = risk_config.get("esg_scores") or None
@@ -99,9 +103,9 @@ def run(config: str, json_output: bool, json_file: str | None) -> None:
         budget = float(algo_settings.get("budget", 1.0))
         penalty_strength = float(algo_settings.get("penalty_strength", 1000.0))
         transaction_cost = float(algo_settings.get("transaction_cost", 0.0))
-        
+
         # Sector and Partitioning support (2026 Modular Hardware)
-        sectors = algo_settings.get("sectors") # Dict[str, List[int]]
+        sectors = algo_settings.get("sectors")  # Dict[str, List[int]]
         use_partitioning = bool(algo_settings.get("use_partitioning", False))
 
         qubo_builder = PortfolioQUBO(
@@ -116,7 +120,9 @@ def run(config: str, json_output: bool, json_file: str | None) -> None:
             penalty_strength=penalty_strength,
             risk_metric=risk_metric,
             cvar_confidence=cvar_confidence,
-            esg_scores=np.array(esg_scores, dtype=float) if esg_scores is not None else None,
+            esg_scores=np.array(esg_scores, dtype=float)
+            if esg_scores is not None
+            else None,
             esg_weight=esg_weight if esg_scores is not None else 0.0,
             sectors=sectors,
         )
@@ -184,7 +190,9 @@ def run(config: str, json_output: bool, json_file: str | None) -> None:
             if "entanglement" in algo_settings:
                 ansatz_options["entanglement"] = algo_settings["entanglement"]
             if "insert_barriers" in algo_settings:
-                ansatz_options["insert_barriers"] = bool(algo_settings["insert_barriers"])
+                ansatz_options["insert_barriers"] = bool(
+                    algo_settings["insert_barriers"]
+                )
 
             ansatz_for_bounds = get_ansatz(
                 ansatz_name,
@@ -241,7 +249,8 @@ def run(config: str, json_output: bool, json_file: str | None) -> None:
             "backend": backend_config.get("name"),
             "tickers": tickers,
             "weights_pct": {
-                ticker: round(float(weight) * 100, 2) for ticker, weight in zip(tickers, weights)
+                ticker: round(float(weight) * 100, 2)
+                for ticker, weight in zip(tickers, weights)
             },
             "best_bitstring": best_bitstring,
             "objective_value": float(result.optimal_value),
@@ -252,7 +261,9 @@ def run(config: str, json_output: bool, json_file: str | None) -> None:
             "sharpe_ratio": round(sharpe, 3),
             "baseline": {
                 "expected_return_pct": round(baseline.expected_return * 252 * 100, 2),
-                "portfolio_risk_pct": round(float(np.sqrt(max(baseline.variance * 252, 0))) * 100, 2),
+                "portfolio_risk_pct": round(
+                    float(np.sqrt(max(baseline.variance * 252, 0))) * 100, 2
+                ),
                 "sharpe_ratio": round(float(baseline.sharpe_ratio), 3),
                 "success": bool(baseline.success),
             },

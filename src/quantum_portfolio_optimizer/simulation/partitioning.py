@@ -7,7 +7,7 @@ across multiple quantum processor modules (e.g., IBM Kookaburra architecture).
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import List
 
 import numpy as np
 from qiskit import QuantumCircuit
@@ -19,6 +19,7 @@ try:
         generate_cutting_experiments,
         reconstruct_expectation_values,
     )
+
     CUTTING_AVAILABLE = True
 except ImportError:
     CUTTING_AVAILABLE = False
@@ -53,7 +54,7 @@ def run_partitioned_vqe_step(
         for q_idx in qubit_indices:
             if q_idx < num_qubits:
                 partition_labels[q_idx] = p_idx
-            
+
     if None in partition_labels:
         next_p = len(partitions)
         for i in range(num_qubits):
@@ -65,16 +66,14 @@ def run_partitioned_vqe_step(
 
     # 3. Partition the problem
     partitioned_problem = partition_problem(
-        circuit=circuit,
-        partition_labels=partition_labels,
-        observables=pauli_list
+        circuit=circuit, partition_labels=partition_labels, observables=pauli_list
     )
 
     # 4. Generate experiments
     subexperiments, coefficients = generate_cutting_experiments(
         partitioned_problem.subcircuits,
         partitioned_problem.subobservables,
-        num_samples=np.inf
+        num_samples=np.inf,
     )
 
     # 5. Execute sub-experiments
@@ -87,12 +86,10 @@ def run_partitioned_vqe_step(
 
     # 6. Knit results back together
     reconstructed_values = reconstruct_expectation_values(
-        results,
-        coefficients,
-        partitioned_problem.subobservables
+        results, coefficients, partitioned_problem.subobservables
     )
 
     # Reconstruct gives <Pauli_i>, compute total energy: sum(coeff_i * <Pauli_i>)
     energy = np.dot(observable.coeffs, reconstructed_values)
-    
+
     return float(np.real(energy))

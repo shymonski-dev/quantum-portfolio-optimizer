@@ -53,8 +53,8 @@ setup(
         "Topic :: Scientific/Engineering :: Physics",
     ],
     entry_points={
-        'console_scripts': [
-            'qpo=quantum_portfolio_optimizer.cli:cli',
+        "console_scripts": [
+            "qpo=quantum_portfolio_optimizer.cli:cli",
         ],
     },
 )

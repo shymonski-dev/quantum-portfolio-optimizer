@@ -12,11 +12,13 @@ from quantum_portfolio_optimizer.simulation.provider import get_provider
 def simple_qubo():
     """Create a simple 3-asset QUBO for testing."""
     expected_returns = np.array([0.01, 0.015, 0.008])
-    covariance = np.array([
-        [0.04, 0.01, 0.005],
-        [0.01, 0.05, 0.01],
-        [0.005, 0.01, 0.03],
-    ])
+    covariance = np.array(
+        [
+            [0.04, 0.01, 0.005],
+            [0.01, 0.05, 0.01],
+            [0.005, 0.01, 0.03],
+        ]
+    )
     builder = PortfolioQUBO(
         expected_returns=expected_returns,
         covariance=covariance,
@@ -71,7 +73,10 @@ class TestVQEWithoutSampler:
         backend_config = {"name": "local_simulator", "shots": 100, "seed": 42}
         estimator, _ = get_provider(backend_config)
 
-        from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
+        from quantum_portfolio_optimizer.core.optimizer_interface import (
+            DifferentialEvolutionConfig,
+        )
+
         config = DifferentialEvolutionConfig(
             bounds=[(-np.pi, np.pi)] * 12,
             maxiter=5,
@@ -101,7 +106,10 @@ class TestVQEWithSampler:
         backend_config = {"name": "local_simulator", "shots": 1024, "seed": 42}
         estimator, sampler = get_provider(backend_config)
 
-        from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
+        from quantum_portfolio_optimizer.core.optimizer_interface import (
+            DifferentialEvolutionConfig,
+        )
+
         config = DifferentialEvolutionConfig(
             bounds=[(-np.pi, np.pi)] * 12,
             maxiter=5,
@@ -124,19 +132,25 @@ class TestVQEWithSampler:
         # Should have bitstring
         assert result.best_bitstring is not None
         assert len(result.best_bitstring) >= 3  # At least 3 qubits
-        assert all(c in '01' for c in result.best_bitstring)
+        assert all(c in "01" for c in result.best_bitstring)
 
         # Should have measurement counts
         assert result.measurement_counts is not None
         assert len(result.measurement_counts) > 0
-        assert all(isinstance(k, str) and isinstance(v, int) for k, v in result.measurement_counts.items())
+        assert all(
+            isinstance(k, str) and isinstance(v, int)
+            for k, v in result.measurement_counts.items()
+        )
 
     def test_bitstring_represents_valid_portfolio(self, simple_qubo):
         """Test that extracted bitstring represents a valid portfolio selection."""
         backend_config = {"name": "local_simulator", "shots": 1024, "seed": 42}
         estimator, sampler = get_provider(backend_config)
 
-        from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
+        from quantum_portfolio_optimizer.core.optimizer_interface import (
+            DifferentialEvolutionConfig,
+        )
+
         config = DifferentialEvolutionConfig(
             bounds=[(-np.pi, np.pi)] * 12,
             maxiter=10,
@@ -182,6 +196,7 @@ class TestExtractSolutionMethod:
         )
 
         from quantum_portfolio_optimizer.core.ansatz_library import get_ansatz
+
         ansatz = get_ansatz("real_amplitudes", num_qubits=3, reps=1)
         params = np.zeros(ansatz.num_parameters)
 
@@ -201,13 +216,16 @@ class TestExtractSolutionMethod:
         )
 
         from quantum_portfolio_optimizer.core.ansatz_library import get_ansatz
+
         ansatz = get_ansatz("real_amplitudes", num_qubits=3, reps=1)
         params = np.random.RandomState(42).uniform(-np.pi, np.pi, ansatz.num_parameters)
 
-        bitstring, counts = solver.extract_solution(ansatz, params, num_qubits=3, shots=512)
+        bitstring, counts = solver.extract_solution(
+            ansatz, params, num_qubits=3, shots=512
+        )
 
         assert isinstance(bitstring, str)
-        assert all(c in '01' for c in bitstring)
+        assert all(c in "01" for c in bitstring)
         assert isinstance(counts, dict)
         # Total shots depends on sampler interface (V2 may use different defaults)
         assert sum(counts.values()) > 0

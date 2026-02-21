@@ -37,6 +37,7 @@ try:
         ResilienceOptionsV2,
         ExecutionOptionsV2,
     )
+
     IBM_RUNTIME_AVAILABLE = True
 except ImportError:
     IBM_RUNTIME_AVAILABLE = False
@@ -65,6 +66,7 @@ class ErrorMitigationConfig:
         twirling_enabled: Enable Pauli twirling for noise randomization
         resilience_level: Level (0=none, 1=basic, 2=ZNE, 3=PEC/V2 Advanced)
     """
+
     zne_enabled: bool = True
     pec_enabled: bool = False
     zne_noise_factors: Tuple[float, ...] = (1, 3, 5)
@@ -91,6 +93,7 @@ class IBMQuantumConfig:
         ai_transpilation_level: Level (1-3) for AI-enhanced passes
         error_mitigation: Error mitigation configuration
     """
+
     device: str = "ibm_brisbane"
     channel: str = "ibm_quantum_platform"
     instance: Optional[str] = None
@@ -100,7 +103,9 @@ class IBMQuantumConfig:
     optimization_level: int = 3
     use_ai_transpiler: bool = True
     ai_transpilation_level: int = 2
-    error_mitigation: ErrorMitigationConfig = field(default_factory=ErrorMitigationConfig)
+    error_mitigation: ErrorMitigationConfig = field(
+        default_factory=ErrorMitigationConfig
+    )
 
 
 # Global session manager for reusing sessions
@@ -108,7 +113,11 @@ _active_session: Optional[Session] = None
 _session_backend: Optional[str] = None
 
 
-def _get_runtime_service(token: Optional[str] = None, channel: str = "ibm_quantum_platform", instance: Optional[str] = None) -> "QiskitRuntimeService":
+def _get_runtime_service(
+    token: Optional[str] = None,
+    channel: str = "ibm_quantum_platform",
+    instance: Optional[str] = None,
+) -> "QiskitRuntimeService":
     """Get or create a QiskitRuntimeService instance.
 
     Args:
@@ -140,15 +149,21 @@ def _get_runtime_service(token: Optional[str] = None, channel: str = "ibm_quantu
     try:
         if token:
             if channel == "ibm_cloud" and instance:
-                service = QiskitRuntimeService(channel=channel, token=token, instance=instance)
+                service = QiskitRuntimeService(
+                    channel=channel, token=token, instance=instance
+                )
                 logger.info(f"Connected to IBM Cloud with instance: {instance[:50]}...")
             else:
                 service = QiskitRuntimeService(channel=channel, token=token)
-                logger.info(f"Connected to IBM Quantum via {channel} channel with provided token")
+                logger.info(
+                    f"Connected to IBM Quantum via {channel} channel with provided token"
+                )
         else:
             # Try to use saved credentials
             service = QiskitRuntimeService(channel=channel)
-            logger.info(f"Connected to IBM Quantum via {channel} channel with saved credentials")
+            logger.info(
+                f"Connected to IBM Quantum via {channel} channel with saved credentials"
+            )
         return service
     except Exception as e:
         error_str = str(e).lower()
@@ -157,9 +172,7 @@ def _get_runtime_service(token: Optional[str] = None, channel: str = "ibm_quantu
                 f"Invalid or missing API token. "
                 f"Ensure QE_TOKEN environment variable is set correctly. Original error: {e}"
             )
-        raise IBMAuthenticationError(
-            f"Failed to connect to IBM Quantum: {e}"
-        )
+        raise IBMAuthenticationError(f"Failed to connect to IBM Quantum: {e}")
 
 
 def _build_estimator_options(config: IBMQuantumConfig) -> "EstimatorOptions":
@@ -286,7 +299,9 @@ def get_ibm_quantum_backend(config: Dict[str, Any]) -> Tuple[Any, Any]:
     # Parse configuration
     device = config.get("device")
     if not device:
-        raise BackendError("'device' must be specified in the backend config for IBM Quantum.")
+        raise BackendError(
+            "'device' must be specified in the backend config for IBM Quantum."
+        )
 
     channel = config.get("channel", "ibm_quantum_platform")
     instance = config.get("instance")
@@ -369,7 +384,9 @@ def get_ibm_quantum_backend(config: Dict[str, Any]) -> Tuple[Any, Any]:
     # Log error mitigation settings
     logger.info("Error mitigation settings:")
     logger.info(f"  - Resilience level: {error_mitigation.resilience_level}")
-    logger.info(f"  - Dynamical decoupling: {error_mitigation.dynamical_decoupling} ({error_mitigation.dd_sequence})")
+    logger.info(
+        f"  - Dynamical decoupling: {error_mitigation.dynamical_decoupling} ({error_mitigation.dd_sequence})"
+    )
     logger.info(f"  - Twirling: {error_mitigation.twirling_enabled}")
     logger.info(f"  - ZNE: {error_mitigation.zne_enabled}")
 
@@ -390,16 +407,20 @@ def list_available_backends(channel: str = "ibm_quantum_platform") -> list:
     for backend in service.backends():
         try:
             status = backend.status()
-            backends.append({
-                "name": backend.name,
-                "qubits": backend.num_qubits,
-                "status": status.status_msg,
-                "pending_jobs": status.pending_jobs,
-            })
+            backends.append(
+                {
+                    "name": backend.name,
+                    "qubits": backend.num_qubits,
+                    "status": status.status_msg,
+                    "pending_jobs": status.pending_jobs,
+                }
+            )
         except Exception:
-            backends.append({
-                "name": backend.name,
-                "qubits": getattr(backend, "num_qubits", "?"),
-                "status": "unknown",
-            })
+            backends.append(
+                {
+                    "name": backend.name,
+                    "qubits": getattr(backend, "num_qubits", "?"),
+                    "status": "unknown",
+                }
+            )
     return sorted(backends, key=lambda x: x.get("qubits", 0), reverse=True)

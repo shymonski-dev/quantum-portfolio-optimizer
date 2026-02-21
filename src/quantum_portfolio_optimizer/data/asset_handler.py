@@ -69,7 +69,9 @@ class AssetDataLoader:
             raise ValueError(f"Unsupported returns method '{method}'.")
         return returns
 
-    def compute_volatility(self, returns: pd.DataFrame, window: Optional[int] = None) -> pd.Series:
+    def compute_volatility(
+        self, returns: pd.DataFrame, window: Optional[int] = None
+    ) -> pd.Series:
         if window:
             vol = returns.rolling(window=window).std().dropna(how="all").iloc[-1]
         else:

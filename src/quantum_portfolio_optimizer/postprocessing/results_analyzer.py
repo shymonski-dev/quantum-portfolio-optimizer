@@ -30,7 +30,9 @@ class ResultAnalyzer:
 
         num_assets = int(self.qubo.metadata.get("num_assets", 0))
         if num_assets <= 0:
-            num_assets = max((asset for asset, _, _ in self.qubo.variable_order), default=-1) + 1
+            num_assets = (
+                max((asset for asset, _, _ in self.qubo.variable_order), default=-1) + 1
+            )
 
         normalisation = float(self.qubo.metadata.get("normalisation", 1.0))
         bit_weights = self.qubo.metadata.get("bit_weights")
@@ -53,10 +55,20 @@ class ResultAnalyzer:
         energies = []
         for bitstring in bitstrings:
             bits = np.array(list(bitstring[::-1]), dtype=int)
-            energy = float(bits @ self.qubo.quadratic @ bits + self.qubo.linear @ bits + self.qubo.offset)
+            energy = float(
+                bits @ self.qubo.quadratic @ bits
+                + self.qubo.linear @ bits
+                + self.qubo.offset
+            )
             allocations = self.bitstring_to_allocations(bitstring)
-            energies.append(CandidateSolution(bitstring=bitstring, energy=energy, allocations=allocations))
+            energies.append(
+                CandidateSolution(
+                    bitstring=bitstring, energy=energy, allocations=allocations
+                )
+            )
         return sorted(energies, key=lambda c: c.energy)
 
-    def top_k(self, results: List[Tuple[str, float]], k: int = 3) -> List[Tuple[str, float]]:
+    def top_k(
+        self, results: List[Tuple[str, float]], k: int = 3
+    ) -> List[Tuple[str, float]]:
         return sorted(results, key=lambda kv: kv[1])[:k]

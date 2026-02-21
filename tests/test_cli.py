@@ -96,7 +96,9 @@ def test_cli_run_vqe_json_output(monkeypatch):
     }
 
     monkeypatch.setattr(cli_module, "load_config", lambda _path: config)
-    monkeypatch.setattr(cli_module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices())
+    monkeypatch.setattr(
+        cli_module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices()
+    )
     monkeypatch.setattr(cli_module, "get_provider", lambda _cfg: (object(), object()))
     monkeypatch.setattr(cli_module, "PortfolioQUBO", _DummyQUBOBuilder)
     monkeypatch.setattr(cli_module, "PortfolioVQESolver", _DummyVQESolver)
@@ -105,10 +107,14 @@ def test_cli_run_vqe_json_output(monkeypatch):
         "get_ansatz",
         lambda *_args, **_kwargs: SimpleNamespace(num_parameters=3),
     )
-    monkeypatch.setattr(cli_module, "markowitz_baseline", lambda **_kwargs: _markowitz_result())
+    monkeypatch.setattr(
+        cli_module, "markowitz_baseline", lambda **_kwargs: _markowitz_result()
+    )
 
     runner = CliRunner()
-    result = runner.invoke(cli_module.cli, ["run", "--config", "dummy.yaml", "--json-output"])
+    result = runner.invoke(
+        cli_module.cli, ["run", "--config", "dummy.yaml", "--json-output"]
+    )
 
     assert result.exit_code == 0
     assert '"algorithm": "vqe"' in result.output
@@ -133,11 +139,15 @@ def test_cli_run_qaoa_text_output(monkeypatch):
     }
 
     monkeypatch.setattr(cli_module, "load_config", lambda _path: config)
-    monkeypatch.setattr(cli_module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices())
+    monkeypatch.setattr(
+        cli_module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices()
+    )
     monkeypatch.setattr(cli_module, "get_provider", lambda _cfg: (object(), object()))
     monkeypatch.setattr(cli_module, "PortfolioQUBO", _DummyQUBOBuilder)
     monkeypatch.setattr(cli_module, "PortfolioQAOASolver", _DummyQAOASolver)
-    monkeypatch.setattr(cli_module, "markowitz_baseline", lambda **_kwargs: _markowitz_result())
+    monkeypatch.setattr(
+        cli_module, "markowitz_baseline", lambda **_kwargs: _markowitz_result()
+    )
 
     runner = CliRunner()
     result = runner.invoke(cli_module.cli, ["run", "--config", "dummy.yaml"])
@@ -165,7 +175,9 @@ def test_cli_run_writes_json_file(monkeypatch):
     }
 
     monkeypatch.setattr(cli_module, "load_config", lambda _path: config)
-    monkeypatch.setattr(cli_module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices())
+    monkeypatch.setattr(
+        cli_module, "fetch_stock_data", lambda *_args, **_kwargs: _sample_prices()
+    )
     monkeypatch.setattr(cli_module, "get_provider", lambda _cfg: (object(), object()))
     monkeypatch.setattr(cli_module, "PortfolioQUBO", _DummyQUBOBuilder)
     monkeypatch.setattr(cli_module, "PortfolioVQESolver", _DummyVQESolver)
@@ -174,7 +186,9 @@ def test_cli_run_writes_json_file(monkeypatch):
         "get_ansatz",
         lambda *_args, **_kwargs: SimpleNamespace(num_parameters=3),
     )
-    monkeypatch.setattr(cli_module, "markowitz_baseline", lambda **_kwargs: _markowitz_result())
+    monkeypatch.setattr(
+        cli_module, "markowitz_baseline", lambda **_kwargs: _markowitz_result()
+    )
 
     runner = CliRunner()
     with runner.isolated_filesystem():

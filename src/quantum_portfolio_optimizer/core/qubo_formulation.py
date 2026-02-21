@@ -38,7 +38,9 @@ class QUBOProblem:
         if self.linear.ndim != 1:
             raise QUBOError("linear coefficients must be a 1-D array")
         if self.quadratic.shape != (self.linear.size, self.linear.size):
-            raise QUBOError("quadratic matrix must be square with size matching linear terms")
+            raise QUBOError(
+                "quadratic matrix must be square with size matching linear terms"
+            )
         if not np.allclose(self.quadratic, self.quadratic.T, atol=1e-9):
             raise QUBOError("quadratic matrix must be symmetric")
 
@@ -86,7 +88,7 @@ class QUBOProblem:
         """
         h, j, constant = self.to_ising()
         num_qubits = self.num_variables
-        
+
         sparse_list = []
 
         # Constant term (Identity)
@@ -217,9 +219,15 @@ class PortfolioQUBO:
         self.resolution_qubits = int(resolution_qubits)
         self.max_investment = float(max_investment)
         self.penalty_strength = float(penalty_strength)
-        self.time_budget_penalty = float(time_budget_penalty) if time_budget_penalty is not None else self.penalty_strength
+        self.time_budget_penalty = (
+            float(time_budget_penalty)
+            if time_budget_penalty is not None
+            else self.penalty_strength
+        )
         self.asset_penalty_strength = (
-            float(asset_penalty_strength) if asset_penalty_strength is not None else self.penalty_strength
+            float(asset_penalty_strength)
+            if asset_penalty_strength is not None
+            else self.penalty_strength
         )
         self.enforce_budget = bool(enforce_budget)
         self.budget = float(budget)
@@ -229,33 +237,49 @@ class PortfolioQUBO:
         if self.time_steps < 1:
             raise InvalidParameterError("time_steps", self.time_steps, "must be >= 1")
         if self.resolution_qubits < 1:
-            raise InvalidParameterError("resolution_qubits", self.resolution_qubits, "must be >= 1")
+            raise InvalidParameterError(
+                "resolution_qubits", self.resolution_qubits, "must be >= 1"
+            )
         if self.max_investment <= 0:
-            raise InvalidParameterError("max_investment", self.max_investment, "must be positive")
+            raise InvalidParameterError(
+                "max_investment", self.max_investment, "must be positive"
+            )
         if self.budget <= 0:
             raise InvalidBudgetError(self.budget, "must be positive")
 
         self.risk_metric = risk_metric
         self.cvar_confidence = float(cvar_confidence)
         if self.risk_metric not in ("variance", "cvar"):
-            raise ValueError(f"risk_metric must be 'variance' or 'cvar', got '{self.risk_metric}'")
+            raise ValueError(
+                f"risk_metric must be 'variance' or 'cvar', got '{self.risk_metric}'"
+            )
 
-        self.expected_returns = self._normalise_returns(expected_returns, self.time_steps)
+        self.expected_returns = self._normalise_returns(
+            expected_returns, self.time_steps
+        )
         self.covariance = np.asarray(covariance, dtype=float)
-        if self.covariance.ndim != 2 or self.covariance.shape[0] != self.covariance.shape[1]:
-            raise InvalidCovarianceError("must be a square matrix", shape=self.covariance.shape)
+        if (
+            self.covariance.ndim != 2
+            or self.covariance.shape[0] != self.covariance.shape[1]
+        ):
+            raise InvalidCovarianceError(
+                "must be a square matrix", shape=self.covariance.shape
+            )
 
         self.num_assets = self.covariance.shape[0]
         if self.expected_returns.shape[1] != self.num_assets:
             raise InvalidCovarianceError(
-                "dimensions must match expected_returns",
-                shape=self.covariance.shape
+                "dimensions must match expected_returns", shape=self.covariance.shape
             )
 
         if not np.allclose(self.covariance, self.covariance.T, atol=1e-8):
-            raise InvalidCovarianceError("must be symmetric", shape=self.covariance.shape)
+            raise InvalidCovarianceError(
+                "must be symmetric", shape=self.covariance.shape
+            )
 
-        self.esg_scores = np.asarray(esg_scores, dtype=float) if esg_scores is not None else None
+        self.esg_scores = (
+            np.asarray(esg_scores, dtype=float) if esg_scores is not None else None
+        )
         self.esg_weight = float(esg_weight)
 
         if self.esg_weight != 0.0 and self.esg_scores is None:
@@ -266,11 +290,15 @@ class PortfolioQUBO:
                 f"number of assets ({self.num_assets})"
             )
 
-        self._bit_weights = np.array([2**b for b in range(self.resolution_qubits)], dtype=float)
+        self._bit_weights = np.array(
+            [2**b for b in range(self.resolution_qubits)], dtype=float
+        )
         self._levels = 2**self.resolution_qubits
         self._allocation_scale = self.max_investment / max(1, self.time_steps)
         self._normalisation = (
-            self._allocation_scale if self._levels == 1 else self._allocation_scale / (self._levels - 1)
+            self._allocation_scale
+            if self._levels == 1
+            else self._allocation_scale / (self._levels - 1)
         )
 
         self._variable_order: List[Tuple[int, int, int]] = []
@@ -280,8 +308,12 @@ class PortfolioQUBO:
                     self._variable_order.append((asset, t_step, bit))
 
         # Pre-compute index groupings for constraints and energy terms.
-        self._asset_indices: Dict[int, List[int]] = {asset: [] for asset in range(self.num_assets)}
-        self._time_indices: Dict[int, List[int]] = {t_step: [] for t_step in range(self.time_steps)}
+        self._asset_indices: Dict[int, List[int]] = {
+            asset: [] for asset in range(self.num_assets)
+        }
+        self._time_indices: Dict[int, List[int]] = {
+            t_step: [] for t_step in range(self.time_steps)
+        }
         self._asset_time_indices: Dict[Tuple[int, int], List[int]] = {}
         self._variable_weights = np.zeros(len(self._variable_order), dtype=float)
         for idx, (asset, t_step, bit) in enumerate(self._variable_order):
@@ -301,18 +333,21 @@ class PortfolioQUBO:
             time_budget_array = np.asarray(list(time_step_budgets), dtype=float)
             if time_budget_array.shape != (self.time_steps,):
                 raise InvalidParameterError(
-                    "time_step_budgets", time_budget_array.tolist(),
-                    f"must have length equal to time_steps ({self.time_steps})"
+                    "time_step_budgets",
+                    time_budget_array.tolist(),
+                    f"must have length equal to time_steps ({self.time_steps})",
                 )
             if np.any(time_budget_array <= 0):
                 raise InvalidParameterError(
-                    "time_step_budgets", time_budget_array.tolist(),
-                    "entries must be positive"
+                    "time_step_budgets",
+                    time_budget_array.tolist(),
+                    "entries must be positive",
                 )
             if np.any(time_budget_array > self.max_investment):
                 raise InvalidParameterError(
-                    "time_step_budgets", time_budget_array.tolist(),
-                    f"cannot exceed max_investment ({self.max_investment})"
+                    "time_step_budgets",
+                    time_budget_array.tolist(),
+                    f"cannot exceed max_investment ({self.max_investment})",
                 )
             self.time_step_budgets = time_budget_array
         else:
@@ -323,18 +358,21 @@ class PortfolioQUBO:
             asset_array = np.asarray(list(asset_max_allocation), dtype=float)
             if asset_array.shape != (self.num_assets,):
                 raise InvalidParameterError(
-                    "asset_max_allocation", asset_array.tolist(),
-                    f"must match number of assets ({self.num_assets})"
+                    "asset_max_allocation",
+                    asset_array.tolist(),
+                    f"must match number of assets ({self.num_assets})",
                 )
             if np.any(asset_array <= 0):
                 raise InvalidParameterError(
-                    "asset_max_allocation", asset_array.tolist(),
-                    "entries must be positive"
+                    "asset_max_allocation",
+                    asset_array.tolist(),
+                    "entries must be positive",
                 )
             if np.any(asset_array > self.max_investment):
                 raise InvalidParameterError(
-                    "asset_max_allocation", asset_array.tolist(),
-                    f"cannot exceed max_investment ({self.max_investment})"
+                    "asset_max_allocation",
+                    asset_array.tolist(),
+                    f"cannot exceed max_investment ({self.max_investment})",
                 )
             self.asset_max_allocation = asset_array
         else:
@@ -344,7 +382,7 @@ class PortfolioQUBO:
         """Map asset sectors to qubit indices for circuit partitioning."""
         if not self.sectors:
             return []
-        
+
         partitions = []
         for sector_assets in self.sectors.values():
             sector_indices = []
@@ -365,13 +403,13 @@ class PortfolioQUBO:
         elif returns.ndim == 2:
             if returns.shape[0] != time_steps:
                 raise InvalidParameterError(
-                    "expected_returns", returns.shape,
-                    f"shape[0] must equal time_steps ({time_steps})"
+                    "expected_returns",
+                    returns.shape,
+                    f"shape[0] must equal time_steps ({time_steps})",
                 )
         else:
             raise InvalidParameterError(
-                "expected_returns", returns.ndim,
-                "must be 1-D or 2-D array"
+                "expected_returns", returns.ndim, "must be 1-D or 2-D array"
             )
         return returns
 
@@ -387,11 +425,15 @@ class PortfolioQUBO:
             λ parameter for transaction cost calculation
         """
         import math
+
         return math.sqrt(3) * K / (2 * K_prime)
 
     def _weights_for_asset(self, asset: int) -> List[Tuple[int, float]]:
         """Allocation contributions for all variables that belong to a given asset."""
-        return [(idx, self._variable_weights[idx]) for idx in self._asset_indices.get(asset, [])]
+        return [
+            (idx, self._variable_weights[idx])
+            for idx in self._asset_indices.get(asset, [])
+        ]
 
     def _apply_penalty(
         self,
@@ -493,7 +535,11 @@ class PortfolioQUBO:
                 for idx_i, weight_i in weights_i:
                     pair_iter = weights_j
                     if asset_i == asset_j:
-                        pair_iter = [(idx_j, weight_j) for idx_j, weight_j in weights_j if idx_j >= idx_i]
+                        pair_iter = [
+                            (idx_j, weight_j)
+                            for idx_j, weight_j in weights_j
+                            if idx_j >= idx_i
+                        ]
                     for idx_j, weight_j in pair_iter:
                         coeff = cov_coeff * weight_i * weight_j
                         if idx_i == idx_j:
@@ -516,16 +562,27 @@ class PortfolioQUBO:
         if self.time_step_budgets is not None:
             for t_step, limit in enumerate(self.time_step_budgets):
                 indices = self._time_indices[t_step]
-                offset = self._apply_penalty(linear, quadratic, offset, indices, limit, self.time_budget_penalty)
+                offset = self._apply_penalty(
+                    linear, quadratic, offset, indices, limit, self.time_budget_penalty
+                )
 
         if self.asset_max_allocation is not None:
             for asset, limit in enumerate(self.asset_max_allocation):
                 indices = self._asset_indices[asset]
-                offset = self._apply_penalty(linear, quadratic, offset, indices, limit, self.asset_penalty_strength)
+                offset = self._apply_penalty(
+                    linear,
+                    quadratic,
+                    offset,
+                    indices,
+                    limit,
+                    self.asset_penalty_strength,
+                )
 
         # Transaction cost penalty encourages smooth allocation across time.
         if self.transaction_cost > 0 and self.time_steps > 1:
-            lambda_factor = self.calculate_lambda_parameter(self._levels, max(1, self._levels - 1))
+            lambda_factor = self.calculate_lambda_parameter(
+                self._levels, max(1, self._levels - 1)
+            )
             lambda_tc = self.transaction_cost * lambda_factor
             for asset in range(self.num_assets):
                 prev_vars: List[Tuple[int, float]] = []

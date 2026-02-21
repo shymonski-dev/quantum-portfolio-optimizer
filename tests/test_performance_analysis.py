@@ -1,4 +1,6 @@
-from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
+from quantum_portfolio_optimizer.core.optimizer_interface import (
+    DifferentialEvolutionConfig,
+)
 from quantum_portfolio_optimizer.benchmarks.phase2 import (
     BenchmarkResult,
     benchmark_ansatze,
@@ -18,7 +20,9 @@ def test_benchmark_ansatze_returns_results(tmp_path):
     configs = [("real_amplitudes", {"reps": 1, "entanglement": "reverse_linear"})]
     backend_config = {"name": "local_simulator", "shots": None, "seed": 1}
     estimator, _ = get_provider(backend_config)
-    results = benchmark_ansatze(qubo, configs, small_optimizer_config, estimator, cache_dir=tmp_path)
+    results = benchmark_ansatze(
+        qubo, configs, small_optimizer_config, estimator, cache_dir=tmp_path
+    )
     assert results, "Benchmark should return at least one result"
     first = results[0]
     assert isinstance(first, BenchmarkResult)
@@ -31,11 +35,15 @@ def test_cache_reuse(tmp_path):
     configs = [("real_amplitudes", {"reps": 1, "entanglement": "reverse_linear"})]
     backend_config = {"name": "local_simulator", "shots": None, "seed": 1}
     estimator, _ = get_provider(backend_config)
-    results_first = benchmark_ansatze(qubo, configs, small_optimizer_config, estimator, cache_dir=tmp_path)
+    results_first = benchmark_ansatze(
+        qubo, configs, small_optimizer_config, estimator, cache_dir=tmp_path
+    )
     assert results_first
     assert results_first[0].cache_metadata is not None
     # Second run should hit cache and run quickly; just ensure result content matches and evaluations unchanged.
-    results_second = benchmark_ansatze(qubo, configs, small_optimizer_config, estimator, cache_dir=tmp_path)
+    results_second = benchmark_ansatze(
+        qubo, configs, small_optimizer_config, estimator, cache_dir=tmp_path
+    )
     assert results_second[0].evaluations == results_first[0].evaluations
     assert results_second[0].cache_metadata is not None
 
@@ -46,7 +54,9 @@ def test_evaluate_noise_levels_runs(tmp_path):
     configs = [("real_amplitudes", {"reps": 1, "entanglement": "reverse_linear"})]
     backend_config = {"name": "local_simulator", "shots": None, "seed": 1}
     estimator, _ = get_provider(backend_config)
-    result = benchmark_ansatze(qubo, configs, small_optimizer_config, estimator, cache_dir=tmp_path)[0]
+    result = benchmark_ansatze(
+        qubo, configs, small_optimizer_config, estimator, cache_dir=tmp_path
+    )[0]
     noise_results = evaluate_noise_levels(
         problem,
         result.ansatz_name,

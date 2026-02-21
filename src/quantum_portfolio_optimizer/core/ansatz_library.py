@@ -16,7 +16,8 @@ from qiskit.circuit.library import (
 def build_real_amplitudes(
     num_qubits: int,
     reps: int = 3,  # 3 layers as per paper
-    entanglement: str | Sequence[Sequence[int]] = "reverse_linear",  # Reverse linear from paper
+    entanglement: str
+    | Sequence[Sequence[int]] = "reverse_linear",  # Reverse linear from paper
     insert_barriers: bool = False,
 ) -> QuantumCircuit:
     """Construct RealAmplitudes ansatz using the modern functional builder.
@@ -28,7 +29,7 @@ def build_real_amplitudes(
         num_qubits=num_qubits,
         reps=reps,
         entanglement=entanglement,
-        insert_barriers=insert_barriers
+        insert_barriers=insert_barriers,
     )
 
 
@@ -47,9 +48,13 @@ def build_cyclic_ansatz(num_qubits: int, reps: int = 1) -> QuantumCircuit:
     return qc
 
 
-def build_efficient_su2(num_qubits: int, reps: int = 1, entanglement: str = "linear") -> QuantumCircuit:
+def build_efficient_su2(
+    num_qubits: int, reps: int = 1, entanglement: str = "linear"
+) -> QuantumCircuit:
     """Construct EfficientSU2 ansatz using the modern functional builder."""
-    return build_efficient_su2_func(num_qubits=num_qubits, reps=reps, entanglement=entanglement)
+    return build_efficient_su2_func(
+        num_qubits=num_qubits, reps=reps, entanglement=entanglement
+    )
 
 
 def get_ansatz(name: str, num_qubits: int, **kwargs) -> QuantumCircuit:
@@ -105,7 +110,9 @@ class AnsatzReport:
     size: int
 
 
-def analyse_circuit(circuit: QuantumCircuit, name: Optional[str] = None) -> AnsatzReport:
+def analyse_circuit(
+    circuit: QuantumCircuit, name: Optional[str] = None
+) -> AnsatzReport:
     depth = circuit.depth()
     size = circuit.size()
     num_params = circuit.num_parameters
@@ -131,13 +138,23 @@ def generate_ansatz_family(
 ) -> List[QuantumCircuit]:
     circuits: List[QuantumCircuit] = []
     if include_real:
-        configs = real_configs or [(2, "reverse_linear"), (3, "reverse_linear"), (2, "full")]
+        configs = real_configs or [
+            (2, "reverse_linear"),
+            (3, "reverse_linear"),
+            (2, "full"),
+        ]
         for reps, ent in configs:
-            circuits.append(build_real_amplitudes(num_qubits=num_qubits, reps=reps, entanglement=ent))
+            circuits.append(
+                build_real_amplitudes(
+                    num_qubits=num_qubits, reps=reps, entanglement=ent
+                )
+            )
     if include_cyclic:
         circuits.append(build_cyclic_ansatz(num_qubits=num_qubits, reps=2))
     if include_efficient:
-        circuits.append(build_efficient_su2(num_qubits=num_qubits, reps=2, entanglement="linear"))
+        circuits.append(
+            build_efficient_su2(num_qubits=num_qubits, reps=2, entanglement="linear")
+        )
     return circuits
 
 
@@ -155,7 +172,9 @@ def evaluate_initialisations(
         samples = []
         for _ in range(sample_count):
             strat_seed = int(rng.integers(0, 1 << 32))
-            params = initialise_parameters(circuit, strategy=strategy, seed=strat_seed, scale=scale)
+            params = initialise_parameters(
+                circuit, strategy=strategy, seed=strat_seed, scale=scale
+            )
             samples.append(params)
         stacked = np.vstack(samples)
         results[strategy] = {

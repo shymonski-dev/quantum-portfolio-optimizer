@@ -261,7 +261,11 @@ def score_solution(
         sharpe = 0.0
 
     # Calculate classical Sharpe if available
-    if classical_risk is not None and classical_risk > 0 and classical_return is not None:
+    if (
+        classical_risk is not None
+        and classical_risk > 0
+        and classical_return is not None
+    ):
         classical_sharpe = (classical_return - risk_free_rate) / classical_risk
     else:
         classical_sharpe = sharpe  # Default to same as quantum
@@ -313,7 +317,9 @@ def score_solution(
         summary=summary,
         details={
             "sharpe_ratio": round(sharpe, 3),
-            "classical_sharpe": round(classical_sharpe, 3) if classical_sharpe != sharpe else None,
+            "classical_sharpe": round(classical_sharpe, 3)
+            if classical_sharpe != sharpe
+            else None,
             "allocation_sum": round(float(np.sum(allocations)), 4),
             "budget_deviation": round(abs(float(np.sum(allocations)) - budget), 4),
             "weights_used": normalized_weights,

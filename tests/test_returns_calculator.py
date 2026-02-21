@@ -19,32 +19,29 @@ class TestLogarithmicReturns:
         returns = calculate_logarithmic_returns(prices.reshape(-1, 1))
 
         # Manual calculation: log(110/100), log(105/110), log(115/105)
-        expected = np.array([
-            [np.log(110/100)],
-            [np.log(105/110)],
-            [np.log(115/105)]
-        ])
+        expected = np.array(
+            [[np.log(110 / 100)], [np.log(105 / 110)], [np.log(115 / 105)]]
+        )
         np.testing.assert_array_almost_equal(returns, expected)
 
     def test_multiple_assets(self):
         """Should handle multiple assets correctly."""
-        prices = np.array([
-            [100, 50],
-            [110, 55],
-            [105, 52],
-        ])
+        prices = np.array(
+            [
+                [100, 50],
+                [110, 55],
+                [105, 52],
+            ]
+        )
         returns = calculate_logarithmic_returns(prices)
 
         assert returns.shape == (2, 2)  # 3 prices -> 2 returns
-        np.testing.assert_almost_equal(returns[0, 0], np.log(110/100))
-        np.testing.assert_almost_equal(returns[0, 1], np.log(55/50))
+        np.testing.assert_almost_equal(returns[0, 0], np.log(110 / 100))
+        np.testing.assert_almost_equal(returns[0, 1], np.log(55 / 50))
 
     def test_dataframe_input(self):
         """Should accept pandas DataFrame input."""
-        df = pd.DataFrame({
-            'AAPL': [100, 110, 105],
-            'MSFT': [50, 55, 52]
-        })
+        df = pd.DataFrame({"AAPL": [100, 110, 105], "MSFT": [50, 55, 52]})
         returns = calculate_logarithmic_returns(df)
 
         assert returns.shape == (2, 2)
@@ -86,12 +83,14 @@ class TestRollingCovariance:
 
     def test_basic_covariance(self):
         """Basic covariance calculation should work."""
-        returns = np.array([
-            [0.01, 0.02],
-            [0.02, 0.01],
-            [-0.01, -0.02],
-            [-0.02, -0.01],
-        ])
+        returns = np.array(
+            [
+                [0.01, 0.02],
+                [0.02, 0.01],
+                [-0.01, -0.02],
+                [-0.02, -0.01],
+            ]
+        )
         cov = calculate_rolling_covariance(returns)
 
         assert cov.shape == (2, 2)
@@ -103,10 +102,12 @@ class TestRollingCovariance:
 
     def test_window_larger_than_data(self):
         """Should use all data when window > data length."""
-        returns = np.array([
-            [0.01, 0.02],
-            [0.02, 0.01],
-        ])
+        returns = np.array(
+            [
+                [0.01, 0.02],
+                [0.02, 0.01],
+            ]
+        )
         cov = calculate_rolling_covariance(returns, window=30)
 
         assert cov.shape == (2, 2)
@@ -114,11 +115,13 @@ class TestRollingCovariance:
 
     def test_window_equals_data(self):
         """Should work when window equals data length."""
-        returns = np.array([
-            [0.01, 0.02],
-            [0.02, 0.01],
-            [-0.01, -0.02],
-        ])
+        returns = np.array(
+            [
+                [0.01, 0.02],
+                [0.02, 0.01],
+                [-0.01, -0.02],
+            ]
+        )
         cov = calculate_rolling_covariance(returns, window=3)
 
         assert cov.shape == (2, 2)
@@ -141,10 +144,7 @@ class TestRollingCovariance:
 
     def test_dataframe_input(self):
         """Should accept pandas DataFrame input."""
-        df = pd.DataFrame({
-            'A': [0.01, 0.02, -0.01],
-            'B': [0.02, 0.01, -0.02]
-        })
+        df = pd.DataFrame({"A": [0.01, 0.02, -0.01], "B": [0.02, 0.01, -0.02]})
         cov = calculate_rolling_covariance(df)
 
         assert cov.shape == (2, 2)
@@ -188,11 +188,13 @@ class TestEdgeCases:
 
     def test_mixed_scale_prices(self):
         """Should handle prices at different scales."""
-        prices = np.array([
-            [100, 10000],
-            [110, 11000],
-            [105, 10500],
-        ])
+        prices = np.array(
+            [
+                [100, 10000],
+                [110, 11000],
+                [105, 10500],
+            ]
+        )
         returns = calculate_logarithmic_returns(prices)
         # Returns should be similar for proportional changes
         np.testing.assert_almost_equal(returns[:, 0], returns[:, 1])

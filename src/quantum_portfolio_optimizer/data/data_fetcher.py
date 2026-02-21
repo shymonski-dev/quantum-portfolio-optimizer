@@ -35,16 +35,16 @@ def validate_inputs(tickers: List[str], start_date: str, end_date: str) -> None:
     if len(tickers) > 25:
         raise InvalidTickerError(
             ", ".join(tickers[:3]) + "...",
-            f"Maximum 25 tickers supported, got {len(tickers)}"
+            f"Maximum 25 tickers supported, got {len(tickers)}",
         )
 
     # Ticker format: 1-10 uppercase letters, numbers, dots, or hyphens
-    ticker_pattern = re.compile(r'^[A-Z0-9.\-]{1,10}$')
+    ticker_pattern = re.compile(r"^[A-Z0-9.\-]{1,10}$")
     for ticker in tickers:
         if not ticker_pattern.match(ticker.upper()):
             raise InvalidTickerError(
                 ticker,
-                "Use 1-10 uppercase letters, numbers, dots, or hyphens (e.g., AAPL, BRK.B)"
+                "Use 1-10 uppercase letters, numbers, dots, or hyphens (e.g., AAPL, BRK.B)",
             )
 
     # Check for duplicates
@@ -54,48 +54,47 @@ def validate_inputs(tickers: List[str], start_date: str, end_date: str) -> None:
         if upper in seen:
             raise InvalidTickerError(
                 ticker,
-                "Duplicate tickers detected. Each ticker should appear only once."
+                "Duplicate tickers detected. Each ticker should appear only once.",
             )
         seen.add(upper)
 
     # Date validation
     try:
-        start = datetime.strptime(start_date, '%Y-%m-%d')
+        start = datetime.strptime(start_date, "%Y-%m-%d")
     except ValueError:
         raise InvalidDateRangeError(
-            start_date, end_date,
-            "Invalid start date format. Use YYYY-MM-DD format."
+            start_date, end_date, "Invalid start date format. Use YYYY-MM-DD format."
         )
 
     try:
-        end = datetime.strptime(end_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, "%Y-%m-%d")
     except ValueError:
         raise InvalidDateRangeError(
-            start_date, end_date,
-            "Invalid end date format. Use YYYY-MM-DD format."
+            start_date, end_date, "Invalid end date format. Use YYYY-MM-DD format."
         )
 
     if start >= end:
         raise InvalidDateRangeError(
-            start_date, end_date,
-            "Start date must be before end date"
+            start_date, end_date, "Start date must be before end date"
         )
 
     if end > datetime.now():
         raise InvalidDateRangeError(
-            start_date, end_date,
-            "End date cannot be in the future"
+            start_date, end_date, "End date cannot be in the future"
         )
 
     # Minimum date range for meaningful data
     if (end - start).days < 5:
         raise InvalidDateRangeError(
-            start_date, end_date,
-            "Date range must be at least 5 days for meaningful analysis"
+            start_date,
+            end_date,
+            "Date range must be at least 5 days for meaningful analysis",
         )
 
 
-def fetch_stock_data(tickers: List[str], start_date: str, end_date: str, provider: str = "tiingo") -> pd.DataFrame:
+def fetch_stock_data(
+    tickers: List[str], start_date: str, end_date: str, provider: str = "tiingo"
+) -> pd.DataFrame:
     """
     Fetches historical stock data using OpenBB SDK.
 
@@ -120,7 +119,7 @@ def fetch_stock_data(tickers: List[str], start_date: str, end_date: str, provide
 
     try:
         # OpenBB Platform SDK call
-        # We use a loop for multiple tickers to ensure per-ticker error handling 
+        # We use a loop for multiple tickers to ensure per-ticker error handling
         # and consistent DataFrame construction across different providers.
         all_data = []
         for ticker in tickers:
@@ -128,23 +127,24 @@ def fetch_stock_data(tickers: List[str], start_date: str, end_date: str, provide
                 symbol=ticker,
                 start_date=start_date,
                 end_date=end_date,
-                provider=provider
+                provider=provider,
             ).to_df()
-            
+
             # Select 'close' and rename to ticker
             if "close" in res.columns:
                 series = res["close"]
                 series.name = ticker
                 all_data.append(series)
             else:
-                raise MarketDataError(f"Provider {provider} did not return 'close' price for {ticker}")
+                raise MarketDataError(
+                    f"Provider {provider} did not return 'close' price for {ticker}"
+                )
 
         df_close = pd.concat(all_data, axis=1)
-        
+
     except Exception as e:
         raise MarketDataError(
-            f"Failed to fetch data from {provider}: {str(e)}",
-            provider=provider
+            f"Failed to fetch data from {provider}: {str(e)}", provider=provider
         )
 
     if df_close.empty:

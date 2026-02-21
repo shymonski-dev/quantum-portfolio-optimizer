@@ -36,19 +36,26 @@ def markowitz_baseline(
     num_assets = mu.size
 
     if sigma.shape != (num_assets, num_assets):
-        raise ValueError("Covariance matrix dimensions must align with expected returns.")
+        raise ValueError(
+            "Covariance matrix dimensions must align with expected returns."
+        )
 
     def objective(weights: np.ndarray) -> float:
         variance = weights @ sigma @ weights
         return risk_aversion * variance - mu @ weights
 
-    constraints = (
-        {"type": "eq", "fun": lambda w: np.sum(w) - budget},
-    )
+    constraints = ({"type": "eq", "fun": lambda w: np.sum(w) - budget},)
     bounds_list = [bounds] * num_assets
     initial = np.full(num_assets, budget / num_assets, dtype=float)
 
-    result = optimize.minimize(objective, x0=initial, bounds=bounds_list, constraints=constraints, tol=tol, options={"maxiter": maxiter})
+    result = optimize.minimize(
+        objective,
+        x0=initial,
+        bounds=bounds_list,
+        constraints=constraints,
+        tol=tol,
+        options={"maxiter": maxiter},
+    )
     weights = np.clip(result.x, bounds[0], bounds[1])
     returns = float(mu @ weights)
     variance = float(weights @ sigma @ weights)
@@ -101,11 +108,11 @@ def mip_baseline(
     n = len(mu)
 
     if sigma.shape != (n, n):
-        raise ValueError("Covariance matrix dimensions must align with expected returns.")
-    if num_assets > n:
         raise ValueError(
-            f"num_assets ({num_assets}) must be <= n_assets ({n})."
+            "Covariance matrix dimensions must align with expected returns."
         )
+    if num_assets > n:
+        raise ValueError(f"num_assets ({num_assets}) must be <= n_assets ({n}).")
     if num_assets < 1:
         raise ValueError("num_assets must be >= 1.")
 
@@ -122,8 +129,11 @@ def mip_baseline(
         x0 = np.full(k, budget / k, dtype=float)
 
         result = optimize.minimize(
-            objective, x0=x0, bounds=bounds_list,
-            constraints=constraints, method="SLSQP",
+            objective,
+            x0=x0,
+            bounds=bounds_list,
+            constraints=constraints,
+            method="SLSQP",
             options={"maxiter": 500},
         )
         if not result.success:

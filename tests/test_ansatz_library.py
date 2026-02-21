@@ -1,4 +1,3 @@
-
 from quantum_portfolio_optimizer.core.ansatz_library import (
     analyse_circuit,
     build_cyclic_ansatz,

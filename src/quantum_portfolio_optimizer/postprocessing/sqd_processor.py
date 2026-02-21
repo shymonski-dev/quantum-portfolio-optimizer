@@ -13,9 +13,14 @@ class SimpleSQDProcessor:
 
     def process_counts(self, counts: dict[str, int]) -> dict[str, float]:
         total = sum(counts.values()) + self.smoothing * len(counts)
-        return {bitstring: (count + self.smoothing) / total for bitstring, count in counts.items()}
+        return {
+            bitstring: (count + self.smoothing) / total
+            for bitstring, count in counts.items()
+        }
 
-    def expectation_from_counts(self, counts: dict[str, int], objective: np.ndarray) -> float:
+    def expectation_from_counts(
+        self, counts: dict[str, int], objective: np.ndarray
+    ) -> float:
         processed = self.process_counts(counts)
         value = 0.0
         for bitstring, probability in processed.items():

@@ -13,7 +13,7 @@ from scipy.optimize import OptimizeResult, differential_evolution
 @dataclass
 class DifferentialEvolutionConfig:
     bounds: Sequence[Tuple[float, float]]
-    strategy: str = 'best2bin'  # Strategy from paper
+    strategy: str = "best2bin"  # Strategy from paper
     maxiter: int = 20
     popsize: int = 10
     tol: float = 1e-6
@@ -37,12 +37,14 @@ def run_differential_evolution(
 
     # Adjust popsize based on number of qubits if provided
     popsize = config.popsize
-    if num_qubits is not None and config.strategy == 'best2bin':
+    if num_qubits is not None and config.strategy == "best2bin":
         min_popsize = int(0.8 * num_qubits)
         popsize = max(popsize, min_popsize)
 
     best_value = [np.inf]
-    history = deque(maxlen=config.convergence_window if config.convergence_window > 0 else None)
+    history = deque(
+        maxlen=config.convergence_window if config.convergence_window > 0 else None
+    )
 
     def wrapped_objective(params: np.ndarray) -> float:
         value = objective(params)

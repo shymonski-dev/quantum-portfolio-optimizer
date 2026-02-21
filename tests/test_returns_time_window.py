@@ -29,14 +29,16 @@ class TestTimeWindowParameterBug:
         This test documents the current buggy behavior where time_window
         is completely ignored.
         """
-        prices = np.array([
-            [100.0, 50.0],
-            [102.0, 51.0],
-            [104.0, 52.0],
-            [106.0, 53.0],
-            [108.0, 54.0],
-            [110.0, 55.0],
-        ])
+        prices = np.array(
+            [
+                [100.0, 50.0],
+                [102.0, 51.0],
+                [104.0, 52.0],
+                [106.0, 53.0],
+                [108.0, 54.0],
+                [110.0, 55.0],
+            ]
+        )
 
         # Calculate with different time_window values
         returns_window_30 = calculate_logarithmic_returns(prices, time_window=30)
@@ -57,11 +59,13 @@ class TestTimeWindowParameterBug:
 
         This test will FAIL before the fix (no warning) and PASS after.
         """
-        prices = np.array([
-            [100.0, 50.0],
-            [102.0, 51.0],
-            [104.0, 52.0],
-        ])
+        prices = np.array(
+            [
+                [100.0, 50.0],
+                [102.0, 51.0],
+                [104.0, 52.0],
+            ]
+        )
 
         # After fix, using time_window != 30 should warn
         with pytest.warns(DeprecationWarning, match="time_window"):
@@ -69,11 +73,13 @@ class TestTimeWindowParameterBug:
 
     def test_time_window_default_no_warning(self):
         """Using default time_window=30 should not emit warning."""
-        prices = np.array([
-            [100.0, 50.0],
-            [102.0, 51.0],
-            [104.0, 52.0],
-        ])
+        prices = np.array(
+            [
+                [100.0, 50.0],
+                [102.0, 51.0],
+                [104.0, 52.0],
+            ]
+        )
 
         # Default value should not warn
         with warnings.catch_warnings():
@@ -88,40 +94,46 @@ class TestLogarithmicReturnsCorrectness:
 
     def test_logarithmic_returns_formula(self):
         """Verify log returns formula: μ = log(P_{t+1}/P_t)."""
-        prices = np.array([
-            [100.0],
-            [110.0],  # 10% increase
-            [99.0],   # ~10% decrease
-        ])
+        prices = np.array(
+            [
+                [100.0],
+                [110.0],  # 10% increase
+                [99.0],  # ~10% decrease
+            ]
+        )
 
         returns = calculate_logarithmic_returns(prices)
 
         # log(110/100) ≈ 0.0953
         # log(99/110) ≈ -0.1054
         assert returns.shape == (2, 1)
-        assert returns[0, 0] == pytest.approx(np.log(110/100))
-        assert returns[1, 0] == pytest.approx(np.log(99/110))
+        assert returns[0, 0] == pytest.approx(np.log(110 / 100))
+        assert returns[1, 0] == pytest.approx(np.log(99 / 110))
 
     def test_logarithmic_returns_multiple_assets(self):
         """Test with multiple assets."""
-        prices = np.array([
-            [100.0, 50.0, 200.0],
-            [105.0, 52.0, 190.0],
-        ])
+        prices = np.array(
+            [
+                [100.0, 50.0, 200.0],
+                [105.0, 52.0, 190.0],
+            ]
+        )
 
         returns = calculate_logarithmic_returns(prices)
 
         assert returns.shape == (1, 3)
-        assert returns[0, 0] == pytest.approx(np.log(105/100))
-        assert returns[0, 1] == pytest.approx(np.log(52/50))
-        assert returns[0, 2] == pytest.approx(np.log(190/200))
+        assert returns[0, 0] == pytest.approx(np.log(105 / 100))
+        assert returns[0, 1] == pytest.approx(np.log(52 / 50))
+        assert returns[0, 2] == pytest.approx(np.log(190 / 200))
 
     def test_logarithmic_returns_with_dataframe(self):
         """Test that pandas DataFrame input works."""
-        df = pd.DataFrame({
-            'AAPL': [100.0, 105.0, 110.0],
-            'GOOG': [50.0, 51.0, 52.0],
-        })
+        df = pd.DataFrame(
+            {
+                "AAPL": [100.0, 105.0, 110.0],
+                "GOOG": [50.0, 51.0, 52.0],
+            }
+        )
 
         returns = calculate_logarithmic_returns(df)
 
@@ -148,7 +160,7 @@ class TestRollingCovariance:
         # Create returns with distinct early and late patterns
         np.random.seed(42)
         early_returns = np.random.randn(50, 2) * 0.01  # Low volatility
-        late_returns = np.random.randn(50, 2) * 0.05   # High volatility
+        late_returns = np.random.randn(50, 2) * 0.05  # High volatility
         returns = np.vstack([early_returns, late_returns])
 
         # Full covariance vs windowed
@@ -163,11 +175,13 @@ class TestRollingCovariance:
 
     def test_rolling_covariance_small_data(self):
         """When data < window, use all available data."""
-        returns = np.array([
-            [0.01, 0.02],
-            [0.02, 0.01],
-            [-0.01, -0.02],
-        ])
+        returns = np.array(
+            [
+                [0.01, 0.02],
+                [0.02, 0.01],
+                [-0.01, -0.02],
+            ]
+        )
 
         cov = calculate_rolling_covariance(returns, window=100)
 

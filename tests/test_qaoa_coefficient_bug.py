@@ -71,19 +71,26 @@ class TestQAOACoefficientBug:
         qubo = builder.build()
 
         # Verify the QUBO matrix is symmetric
-        assert np.allclose(qubo.quadratic, qubo.quadratic.T), "QUBO matrix must be symmetric"
+        assert np.allclose(qubo.quadratic, qubo.quadratic.T), (
+            "QUBO matrix must be symmetric"
+        )
 
         # Check that Q[0,1] == Q[1,0]
-        assert qubo.quadratic[0, 1] == qubo.quadratic[1, 0], "Matrix should be symmetric"
+        assert qubo.quadratic[0, 1] == qubo.quadratic[1, 0], (
+            "Matrix should be symmetric"
+        )
 
         # Create solver and build circuit - this exercises the fixed code path
         mock_sampler = MagicMock()
         mock_result = MagicMock()
-        mock_result.__getitem__ = MagicMock(return_value=MagicMock(
-            data=MagicMock(keys=lambda: ['meas'], meas=MagicMock(
-                get_counts=lambda: {'00': 500, '11': 500}
-            ))
-        ))
+        mock_result.__getitem__ = MagicMock(
+            return_value=MagicMock(
+                data=MagicMock(
+                    keys=lambda: ["meas"],
+                    meas=MagicMock(get_counts=lambda: {"00": 500, "11": 500}),
+                )
+            )
+        )
         mock_sampler.run.return_value.result.return_value = mock_result
 
         solver = PortfolioQAOASolver(
@@ -108,11 +115,7 @@ class TestQAOACoefficientBug:
         """
         qubo = make_simple_qubo(
             linear=[0.1, -0.2, 0.15],
-            quadratic=[
-                [0.0, 0.3, 0.1],
-                [0.3, 0.0, 0.2],
-                [0.1, 0.2, 0.0]
-            ],
+            quadratic=[[0.0, 0.3, 0.1], [0.3, 0.0, 0.2], [0.1, 0.2, 0.0]],
             offset=1.5,
         )
 

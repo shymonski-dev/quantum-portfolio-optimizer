@@ -32,16 +32,16 @@ def main() -> None:
         penalty_strength=25.0,
     )
     qubo = builder.build()
-    
+
     # Use Statevector primitives for simulation
     estimator = StatevectorEstimator(seed=123)
     sampler = StatevectorSampler(seed=123)
-    
+
     solver = PortfolioVQESolver(
         estimator=estimator,
         sampler=sampler,
         seed=123,
-        progress_callback=progress_callback
+        progress_callback=progress_callback,
     )
     result = solver.solve(qubo)
 

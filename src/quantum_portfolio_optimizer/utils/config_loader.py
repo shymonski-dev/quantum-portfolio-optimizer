@@ -2,6 +2,7 @@
 import yaml
 from typing import Dict, Any
 
+
 def load_config(config_path: str = "config.yaml") -> Dict[str, Any]:
     """
     Loads a YAML configuration file.
@@ -11,7 +12,7 @@ def load_config(config_path: str = "config.yaml") -> Dict[str, Any]:
 
     Returns:
         Dict[str, Any]: A dictionary containing the configuration.
-    
+
     Raises:
         FileNotFoundError: If the configuration file cannot be found.
         yaml.YAMLError: If there is an error parsing the file.
@@ -24,4 +25,3 @@ def load_config(config_path: str = "config.yaml") -> Dict[str, Any]:
         raise FileNotFoundError(f"Configuration file not found at: {config_path}")
     except yaml.YAMLError as e:
         raise yaml.YAMLError(f"Error parsing YAML file: {e}")
-

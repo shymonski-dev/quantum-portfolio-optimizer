@@ -34,7 +34,9 @@ from .ibm_provider import get_ibm_quantum_backend
 logger = logging.getLogger(__name__)
 
 
-def get_provider(config: Dict[str, Any]) -> Tuple[Optional[BaseEstimator], Optional[BaseSampler]]:
+def get_provider(
+    config: Dict[str, Any],
+) -> Tuple[Optional[BaseEstimator], Optional[BaseSampler]]:
     """
     Returns an Estimator and a Sampler based on the provided configuration.
 
@@ -55,7 +57,9 @@ def get_provider(config: Dict[str, Any]) -> Tuple[Optional[BaseEstimator], Optio
         raise ValueError(f"Unsupported backend: {backend_name}")
 
 
-def _get_local_simulator(config: Dict[str, Any]) -> Tuple[Optional[BaseEstimator], Optional[BaseSampler]]:
+def _get_local_simulator(
+    config: Dict[str, Any],
+) -> Tuple[Optional[BaseEstimator], Optional[BaseSampler]]:
     """Returns a local simulator backend.
 
     Uses Qiskit's built-in StatevectorEstimator/StatevectorSampler for basic simulation.
@@ -78,14 +82,20 @@ def _get_local_simulator(config: Dict[str, Any]) -> Tuple[Optional[BaseEstimator
                 "Install with: pip install qiskit-aer"
             )
         run_options = {"shots": shots, "seed_simulator": seed}
-        estimator = AerEstimator(run_options=run_options, backend_options=backend_options)
+        estimator = AerEstimator(
+            run_options=run_options, backend_options=backend_options
+        )
         logger.debug(f"Using AerEstimator with noise model and options: {run_options}")
     elif ReferenceEstimator is not None:
         # Use built-in StatevectorEstimator (no qiskit-aer needed)
-        estimator = ReferenceEstimator(seed=seed) if seed is not None else ReferenceEstimator()
+        estimator = (
+            ReferenceEstimator(seed=seed) if seed is not None else ReferenceEstimator()
+        )
         logger.debug("Using StatevectorEstimator for expectation values.")
     else:
-        raise RuntimeError("Qiskit primitives not available. Please install qiskit>=2.3.0")
+        raise RuntimeError(
+            "Qiskit primitives not available. Please install qiskit>=2.3.0"
+        )
 
     # For Sampler
     if noise_model is not None:
@@ -100,9 +110,13 @@ def _get_local_simulator(config: Dict[str, Any]) -> Tuple[Optional[BaseEstimator
         logger.debug(f"Using AerSampler with noise model and options: {run_options}")
     elif ReferenceSampler is not None:
         # Use built-in StatevectorSampler (no qiskit-aer needed)
-        sampler = ReferenceSampler(seed=seed) if seed is not None else ReferenceSampler()
+        sampler = (
+            ReferenceSampler(seed=seed) if seed is not None else ReferenceSampler()
+        )
         logger.debug("Using StatevectorSampler for sampling.")
     else:
-        raise RuntimeError("Qiskit primitives not available. Please install qiskit>=2.3.0")
+        raise RuntimeError(
+            "Qiskit primitives not available. Please install qiskit>=2.3.0"
+        )
 
     return estimator, sampler

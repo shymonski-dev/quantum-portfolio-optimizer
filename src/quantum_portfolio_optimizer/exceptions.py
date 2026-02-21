@@ -280,7 +280,9 @@ class IBMBackendNotFoundError(BackendError):
         - Backend is under maintenance
     """
 
-    def __init__(self, backend_name: str, available_backends: Optional[list[str]] = None):
+    def __init__(
+        self, backend_name: str, available_backends: Optional[list[str]] = None
+    ):
         self.backend_name = backend_name
         self.available_backends = available_backends
         details = {"backend_name": backend_name}

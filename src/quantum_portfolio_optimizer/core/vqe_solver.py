@@ -55,7 +55,7 @@ class PortfolioVQESolver:
         progress_callback: Optional[Callable[[int, float, float], None]] = None,
         extraction_shots: int = 1024,  # NEW: shots for solution extraction
         zne_config: Optional[dict] = None,
-        use_partitioning: bool = False, # 2026 Modular Hardware support
+        use_partitioning: bool = False,  # 2026 Modular Hardware support
     ) -> None:
         if estimator is None:
             raise ValueError("Estimator cannot be None.")
@@ -78,8 +78,12 @@ class PortfolioVQESolver:
         if num_qubits == 0:
             raise ValueError("QUBO must contain at least one variable.")
 
-        ansatz = get_ansatz(self.ansatz_name, num_qubits=num_qubits, **self.ansatz_options)
-        initial_point = initialise_parameters(ansatz, strategy=self.init_strategy, seed=self.seed)
+        ansatz = get_ansatz(
+            self.ansatz_name, num_qubits=num_qubits, **self.ansatz_options
+        )
+        initial_point = initialise_parameters(
+            ansatz, strategy=self.init_strategy, seed=self.seed
+        )
         observable = qubo.to_pauli()
         history: List[float] = []
         best_history: List[float] = []
@@ -90,7 +94,7 @@ class PortfolioVQESolver:
 
             # Use modern 2026-era logic: Skip local folding if using hardware-native ZNE
             use_local_zne = self.zne_config.get("zne_gate_folding", False)
-            
+
             # Check if estimator has native resilience enabled (IBM Quantum 2026 workflow)
             has_native_resilience = False
             try:
@@ -98,7 +102,9 @@ class PortfolioVQESolver:
                 options = getattr(self.estimator, "options", None)
                 if options and getattr(options, "resilience_level", 0) >= 2:
                     has_native_resilience = True
-                    logger.debug("Leveraging hardware-native Resilience V2; skipping local ZNE folding.")
+                    logger.debug(
+                        "Leveraging hardware-native Resilience V2; skipping local ZNE folding."
+                    )
             except Exception:
                 pass
 
@@ -114,36 +120,48 @@ class PortfolioVQESolver:
                         zne_result = zne_job.result()
                         zne_values.append(self._extract_energy(zne_result))
                     except Exception as e:
-                        logger.warning("Local ZNE evaluation at nf=%d failed: %s", nf, e)
+                        logger.warning(
+                            "Local ZNE evaluation at nf=%d failed: %s", nf, e
+                        )
                         zne_values.append(float("inf"))
                 energy = zne_extrapolate(noise_factors, zne_values, extrapolator)
             else:
                 circuit = ansatz.assign_parameters(parameters)
-                
+
                 # ISA Transpilation for hardware (2026 Requirement)
                 # If using IBM Runtime V2, we MUST transpile to ISA
                 if hasattr(self.estimator, "backend"):
                     try:
-                        from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+                        from qiskit.transpiler.preset_passmanagers import (
+                            generate_preset_pass_manager,
+                        )
+
                         backend = self.estimator.backend
-                        pm = generate_preset_pass_manager(optimization_level=3, backend=backend)
-                        
+                        pm = generate_preset_pass_manager(
+                            optimization_level=3, backend=backend
+                        )
+
                         # Transpile circuit
                         isa_circuit = pm.run(circuit)
-                        
+
                         # Transpile observable (map to same layout)
                         isa_observable = observable.apply_layout(isa_circuit.layout)
-                        
+
                         job = self.estimator.run([(isa_circuit, isa_observable)])
                     except Exception as e:
-                        logger.warning("ISA transpilation failed, falling back to raw circuit: %s", e)
+                        logger.warning(
+                            "ISA transpilation failed, falling back to raw circuit: %s",
+                            e,
+                        )
                         job = self.estimator.run([(circuit, observable)])
                 else:
                     try:
-                        job = self.estimator.run(circuits=[circuit], observables=[observable])
+                        job = self.estimator.run(
+                            circuits=[circuit], observables=[observable]
+                        )
                     except TypeError:
                         job = self.estimator.run([(circuit, observable)])
-                
+
                 result = job.result()
                 energy = self._extract_energy(result)
 
@@ -159,11 +177,13 @@ class PortfolioVQESolver:
             nonlocal best_so_far
             circuit = ansatz.assign_parameters(parameters)
             partitions = qubo.metadata.get("partitions", [])
-            
+
             if not partitions:
-                logger.warning("No partitions found in QUBO metadata. Falling back to non-partitioned evaluation.")
+                logger.warning(
+                    "No partitions found in QUBO metadata. Falling back to non-partitioned evaluation."
+                )
                 return energy_evaluation(parameters)
-            
+
             try:
                 energy = run_partitioned_vqe_step(
                     self.estimator, circuit, observable, partitions
@@ -183,9 +203,13 @@ class PortfolioVQESolver:
         if isinstance(self.parameter_bounds, tuple):
             bounds = [self.parameter_bounds] * ansatz.num_parameters
         elif isinstance(self.parameter_bounds, (int, float)):
-            bounds = [(-abs(self.parameter_bounds), abs(self.parameter_bounds))] * ansatz.num_parameters
+            bounds = [
+                (-abs(self.parameter_bounds), abs(self.parameter_bounds))
+            ] * ansatz.num_parameters
         elif self.parameter_bounds is None:
-            bounds = [(-2*np.pi, 2*np.pi)] * ansatz.num_parameters  # Extended range from paper
+            bounds = [
+                (-2 * np.pi, 2 * np.pi)
+            ] * ansatz.num_parameters  # Extended range from paper
         else:
             bounds = list(self.parameter_bounds)
 
@@ -213,10 +237,14 @@ class PortfolioVQESolver:
         _ = initial_point  # kept for future warm-start schemes
 
         objective_function = (
-            partitioned_energy_evaluation if self.use_partitioning else energy_evaluation
+            partitioned_energy_evaluation
+            if self.use_partitioning
+            else energy_evaluation
         )
 
-        result = run_differential_evolution(objective_function, config=config, num_qubits=num_qubits)
+        result = run_differential_evolution(
+            objective_function, config=config, num_qubits=num_qubits
+        )
         optimal_parameters = np.asarray(result.x, dtype=float)
         optimal_value = float(result.fun)
 
@@ -298,7 +326,10 @@ class PortfolioVQESolver:
         # ISA Transpilation for hardware (2026 Requirement)
         if hasattr(self.sampler, "backend"):
             try:
-                from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+                from qiskit.transpiler.preset_passmanagers import (
+                    generate_preset_pass_manager,
+                )
+
                 backend = self.sampler.backend
                 pm = generate_preset_pass_manager(optimization_level=3, backend=backend)
                 isa_measured_circuit = pm.run(measured_circuit)

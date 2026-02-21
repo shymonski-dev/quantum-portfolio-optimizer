@@ -3,10 +3,12 @@
 import numpy as np
 from quantum_portfolio_optimizer.core.qubo_formulation import PortfolioQUBO
 from quantum_portfolio_optimizer.core.vqe_solver import PortfolioVQESolver
-from quantum_portfolio_optimizer.core.optimizer_interface import DifferentialEvolutionConfig
+from quantum_portfolio_optimizer.core.optimizer_interface import (
+    DifferentialEvolutionConfig,
+)
 from quantum_portfolio_optimizer.data.returns_calculator import (
     calculate_logarithmic_returns,
-    calculate_rolling_covariance
+    calculate_rolling_covariance,
 )
 from quantum_portfolio_optimizer.simulation.provider import get_provider
 
@@ -18,23 +20,31 @@ class TestResearchCompliance:
         """Test that critical parameters match paper values."""
         # Create QUBO with default parameters
         qubo_builder = PortfolioQUBO(
-            expected_returns=[0.1, 0.2, 0.15],
-            covariance=np.eye(3) * 0.01,
-            budget=1.0
+            expected_returns=[0.1, 0.2, 0.15], covariance=np.eye(3) * 0.01, budget=1.0
         )
 
         # Verify critical parameters
-        assert qubo_builder.risk_aversion == 1000, f"Risk aversion should be 1000, got {qubo_builder.risk_aversion}"
-        assert qubo_builder.transaction_cost == 0.01, f"Transaction cost (ν) should be 0.01, got {qubo_builder.transaction_cost}"
-        assert qubo_builder.penalty_strength == 1.0, f"Penalty strength (ρ) should be 1.0, got {qubo_builder.penalty_strength}"
+        assert qubo_builder.risk_aversion == 1000, (
+            f"Risk aversion should be 1000, got {qubo_builder.risk_aversion}"
+        )
+        assert qubo_builder.transaction_cost == 0.01, (
+            f"Transaction cost (ν) should be 0.01, got {qubo_builder.transaction_cost}"
+        )
+        assert qubo_builder.penalty_strength == 1.0, (
+            f"Penalty strength (ρ) should be 1.0, got {qubo_builder.penalty_strength}"
+        )
 
     def test_differential_evolution_config(self):
         """Test DE optimizer configuration matches paper."""
-        config = DifferentialEvolutionConfig(bounds=[(-2*np.pi, 2*np.pi)])
+        config = DifferentialEvolutionConfig(bounds=[(-2 * np.pi, 2 * np.pi)])
 
-        assert config.strategy == 'best2bin', "Strategy should be 'best2bin'"
-        assert config.mutation == (0, 0.25), f"Mutation should be (0, 0.25), got {config.mutation}"
-        assert config.recombination == 0.4, f"Recombination should be 0.4, got {config.recombination}"
+        assert config.strategy == "best2bin", "Strategy should be 'best2bin'"
+        assert config.mutation == (0, 0.25), (
+            f"Mutation should be (0, 0.25), got {config.mutation}"
+        )
+        assert config.recombination == 0.4, (
+            f"Recombination should be 0.4, got {config.recombination}"
+        )
 
     def test_parameter_bounds(self):
         """Test VQE parameter bounds are [-2π, 2π]."""
@@ -43,11 +53,15 @@ class TestResearchCompliance:
         solver = PortfolioVQESolver(estimator=estimator)
 
         # Check default bounds
-        assert solver.parameter_bounds == 2 * np.pi, f"Default bounds should be 2π, got {solver.parameter_bounds}"
+        assert solver.parameter_bounds == 2 * np.pi, (
+            f"Default bounds should be 2π, got {solver.parameter_bounds}"
+        )
 
     def test_ansatz_configuration(self):
         """Test Real Amplitudes ansatz has correct defaults."""
-        from quantum_portfolio_optimizer.core.ansatz_library import build_real_amplitudes
+        from quantum_portfolio_optimizer.core.ansatz_library import (
+            build_real_amplitudes,
+        )
 
         # Build with defaults (3 reps, reverse_linear entanglement)
         ansatz = build_real_amplitudes(num_qubits=6)
@@ -55,7 +69,9 @@ class TestResearchCompliance:
         # With 6 qubits, 3 reps, reverse_linear: each rep has 6 RY gates
         # Total parameters = 6 * (3 + 1) = 24 (6 qubits * 4 layers of RY)
         # Note: function-based ansatz doesn't have .reps/.entanglement attributes
-        assert ansatz.num_qubits == 6, f"Ansatz should have 6 qubits, got {ansatz.num_qubits}"
+        assert ansatz.num_qubits == 6, (
+            f"Ansatz should have 6 qubits, got {ansatz.num_qubits}"
+        )
         assert ansatz.num_parameters > 0, "Ansatz should have parameters"
 
     def test_xs_problem_size(self):
@@ -66,22 +82,20 @@ class TestResearchCompliance:
             budget=1.0,
             time_steps=2,
             resolution_qubits=1,
-            risk_aversion=1000
+            risk_aversion=1000,
         )
 
         qubo = qubo_builder.build()
 
         # Should have 6 qubits total (2 time steps * 3 assets * 1 resolution bit)
         expected_qubits = 2 * 3 * 1
-        assert qubo.num_variables == expected_qubits, f"XS problem should have 6 qubits, got {qubo.num_variables}"
+        assert qubo.num_variables == expected_qubits, (
+            f"XS problem should have 6 qubits, got {qubo.num_variables}"
+        )
 
     def test_logarithmic_returns(self):
         """Test logarithmic returns calculation."""
-        prices = np.array([
-            [100, 50, 75],
-            [105, 52, 73],
-            [110, 51, 76]
-        ])
+        prices = np.array([[100, 50, 75], [105, 52, 73], [110, 51, 76]])
 
         log_returns = calculate_logarithmic_returns(prices)
 
@@ -89,7 +103,7 @@ class TestResearchCompliance:
         assert log_returns.shape == (2, 3), "Should have (n-1) time steps"
 
         # Verify calculation: log(105/100) ≈ 0.04879
-        expected_first = np.log(105/100)
+        expected_first = np.log(105 / 100)
         np.testing.assert_almost_equal(log_returns[0, 0], expected_first, decimal=5)
 
     def test_popsize_calculation(self):
@@ -99,13 +113,15 @@ class TestResearchCompliance:
         min_popsize = int(0.8 * num_qubits)  # Should be at least 4.8 → 4
 
         config = DifferentialEvolutionConfig(
-            bounds=[(-2*np.pi, 2*np.pi)] * num_qubits,
-            popsize=2  # Intentionally too small
+            bounds=[(-2 * np.pi, 2 * np.pi)] * num_qubits,
+            popsize=2,  # Intentionally too small
         )
 
         # This should be adjusted internally
         # Note: Need to verify this is implemented in run_differential_evolution
-        assert config.popsize < min_popsize, "Test setup should start below minimum popsize"
+        assert config.popsize < min_popsize, (
+            "Test setup should start below minimum popsize"
+        )
         assert min_popsize >= 4, "Minimum popsize for 6 qubits should be at least 4"
 
 
@@ -129,19 +145,19 @@ def test_integration_xs_problem():
         transaction_cost=0.01,  # ν from paper
         time_steps=2,
         resolution_qubits=1,
-        penalty_strength=1.0  # ρ from paper
+        penalty_strength=1.0,  # ρ from paper
     )
 
     qubo = qubo_builder.build()
 
     # Configure VQE with research parameters
     config = DifferentialEvolutionConfig(
-        bounds=[(-2*np.pi, 2*np.pi)] * qubo.num_variables,
-        strategy='best2bin',
+        bounds=[(-2 * np.pi, 2 * np.pi)] * qubo.num_variables,
+        strategy="best2bin",
         mutation=(0, 0.25),
         recombination=0.4,
         popsize=10,  # Will be adjusted to meet 0.8 * n_qubits
-        maxiter=50
+        maxiter=50,
     )
 
     backend_config = {"name": "local_simulator", "shots": None, "seed": 123}
@@ -151,9 +167,9 @@ def test_integration_xs_problem():
         estimator=estimator,
         ansatz_name="real_amplitudes",
         ansatz_options={"reps": 3, "entanglement": "reverse_linear"},
-        parameter_bounds=2*np.pi,
+        parameter_bounds=2 * np.pi,
         optimizer_config=config,
-        seed=123
+        seed=123,
     )
 
     # Solve
@@ -161,7 +177,7 @@ def test_integration_xs_problem():
 
     # Basic validation
     assert result is not None, "Should return a result"
-    assert len(result.optimal_parameters) == result.ansatz_report['num_parameters']
-    assert result.ansatz_report['num_qubits'] == 6  # XS problem size
+    assert len(result.optimal_parameters) == result.ansatz_report["num_parameters"]
+    assert result.ansatz_report["num_qubits"] == 6  # XS problem size
 
     assert result is not None
