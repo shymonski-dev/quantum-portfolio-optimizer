@@ -12,3 +12,5 @@ yfinance>=0.2.0
 click>=8.0
 flask>=2.3.0
 qiskit-addon-cutting>=0.2.0
+scikit-learn>=1.3.0
+networkx>=3.0

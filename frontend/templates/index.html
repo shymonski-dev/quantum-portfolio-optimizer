@@ -767,6 +767,10 @@
                         <div class="form-group">
                             <label for="sectors">Asset Sectors (JSON format)</label>
                             <textarea id="sectors" rows="3" style="width: 100%; background: #0a0a0a; color: #e0e0e0; border: 1px solid #333; border-radius: 4px; padding: 10px; font-family: monospace; font-size: 0.85rem;" placeholder='{"Tech": [0, 1], "Energy": [2, 3]}'></textarea>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #888; font-size: 0.85rem; margin-top: 8px;">
+                                <input type="checkbox" id="auto_cluster" style="width: auto;">
+                                AI-Driven Sectors (Auto-Cluster Min-Cut)
+                            </label>
                             <p class="info-text">Define asset groups for partitioning. Indices match the ticker list order (0, 1, 2...).</p>
                         </div>
                     </div>
@@ -1260,6 +1264,7 @@
                 esg_weight: document.getElementById('esg_weight').value,
                 num_assets_select: document.getElementById('num_assets_select').value || null,
                 use_partitioning: document.getElementById('use_partitioning').checked,
+                auto_cluster: document.getElementById('auto_cluster').checked,
                 sectors: (function() {
                     const raw = document.getElementById('sectors').value.strip;
                     try { return raw ? JSON.parse(document.getElementById('sectors').value) : null; }

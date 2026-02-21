@@ -18,6 +18,7 @@ from quantum_portfolio_optimizer.postprocessing.quality_scorer import score_solu
 from quantum_portfolio_optimizer.core.warm_start import (
     warm_start_vqe, warm_start_qaoa, WarmStartConfig
 )
+from quantum_portfolio_optimizer.core.ai_orchestrator import get_optimal_cut_points
 from quantum_portfolio_optimizer.core.ansatz_library import get_ansatz
 from quantum_portfolio_optimizer.exceptions import (
     QuantumPortfolioError,
@@ -98,6 +99,7 @@ def optimize():
         
         # Partitioning & Sectors (2026 Modular Hardware support)
         use_partitioning = bool(data.get('use_partitioning', False))
+        auto_cluster = bool(data.get('auto_cluster', False))
         sectors = data.get('sectors') # Optional Dict[str, List[int]]
 
         # ESG parameters
@@ -145,6 +147,16 @@ def optimize():
         # Scale risk aversion based on slider (0-1) -> (100-10000)
         # Lower slider = lower risk tolerance = higher risk_aversion (penalize risk more)
         risk_aversion = 100 + (1 - risk_factor) * 9900
+
+        # AI Clustering (Min-Cut) logic
+        if auto_cluster:
+            try:
+                # Returns df is needed for correlation
+                returns_df = calculate_logarithmic_returns(stock_data)
+                sectors = get_optimal_cut_points(returns_df, max_cluster_size=max(2, num_assets // 2))
+                logger.info(f"AI Auto-Clustering results: {sectors}")
+            except Exception as e:
+                logger.warning(f"AI Clustering failed: {e}")
 
         # Validate ESG scores length if provided
         if esg_scores is not None and len(esg_scores) != num_assets:
