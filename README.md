@@ -253,7 +253,7 @@ quantum_portfolio_optimizer/
 │   │   ├── constraints.py           # Unified constraint system
 │   │   └── ansatz_library.py        # RealAmplitudes, EfficientSU2
 │   ├── data/
-│   │   ├── data_fetcher.py          # Yahoo Finance integration
+│   │   ├── data_fetcher.py          # OpenBB Platform integration
 │   │   └── returns_calculator.py    # Log returns + covariance
 │   ├── simulation/
 │   │   ├── provider.py              # Backend factory (local / IBM)
@@ -354,7 +354,12 @@ Leveraging the **IBM Kookaburra** architecture, we will extend the **Modular Par
 - Python 3.10+
 - Qiskit >= 2.3.0
 - Flask, NumPy, Pandas, SciPy, scikit-learn
-- yfinance
+- scikit-learn>=1.3.0
+- openbb-core>=1.6.0
+- openbb-equity>=1.6.0
+- openbb-yfinance>=1.4.0
+- openbb-tiingo>=1.4.0
+- yfinance==0.2.55
 - qiskit-ibm-runtime *(optional — IBM Quantum hardware)*
 - qiskit-aer *(optional — noise simulation)*
 
@@ -365,7 +370,7 @@ This software is dual-licensed under the **GNU Affero General Public License v3 
 ## Acknowledgments
 
 - Built with [Qiskit](https://qiskit.org/)
-- Market data from [Yahoo Finance](https://finance.yahoo.com/)
+- Institutional market data via [OpenBB Platform](https://openbb.co/)
 - CVaR-QAOA: Barkoutsos et al. (2020), *Improving Variational Quantum Optimization using CVaR*
 - XY-Mixer: Bartschi & Eidenbenz (2019), *Grover Mixers for QAOA*
 - ZNE: Temme et al. (2017), *Error Mitigation for Short-Depth Quantum Circuits*
