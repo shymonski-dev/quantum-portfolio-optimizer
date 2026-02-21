@@ -99,6 +99,10 @@ def run(config: str, json_output: bool, json_file: str | None) -> None:
         budget = float(algo_settings.get("budget", 1.0))
         penalty_strength = float(algo_settings.get("penalty_strength", 1000.0))
         transaction_cost = float(algo_settings.get("transaction_cost", 0.0))
+        
+        # Sector and Partitioning support (2026 Modular Hardware)
+        sectors = algo_settings.get("sectors") # Dict[str, List[int]]
+        use_partitioning = bool(algo_settings.get("use_partitioning", False))
 
         qubo_builder = PortfolioQUBO(
             expected_returns=mean_returns,
@@ -114,6 +118,7 @@ def run(config: str, json_output: bool, json_file: str | None) -> None:
             cvar_confidence=cvar_confidence,
             esg_scores=np.array(esg_scores, dtype=float) if esg_scores is not None else None,
             esg_weight=esg_weight if esg_scores is not None else 0.0,
+            sectors=sectors,
         )
         qubo = qubo_builder.build()
         click.echo(
@@ -169,6 +174,7 @@ def run(config: str, json_output: bool, json_file: str | None) -> None:
                 cvar_alpha=cvar_alpha,
                 mixer_type=mixer_type,
                 num_assets=num_assets_select,
+                use_partitioning=use_partitioning,
             )
         else:
             ansatz_name = str(algo_settings.get("ansatz", "real_amplitudes"))
@@ -201,6 +207,7 @@ def run(config: str, json_output: bool, json_file: str | None) -> None:
                 seed=seed,
                 extraction_shots=int(backend_config.get("shots", 1024) or 1024),
                 zne_config=solver_zne_config,
+                use_partitioning=use_partitioning,
             )
 
         result = solver.solve(qubo)

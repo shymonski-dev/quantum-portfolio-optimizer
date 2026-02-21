@@ -9,6 +9,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 import numpy as np
 
 from ..simulation.zne import fold_circuit, zne_extrapolate
+from ..simulation.partitioning import run_partitioned_vqe_step
 from .ansatz_library import analyse_circuit, get_ansatz, initialise_parameters
 from .optimizer_interface import DifferentialEvolutionConfig, run_differential_evolution
 from .qubo_formulation import QUBOProblem
@@ -54,6 +55,7 @@ class PortfolioVQESolver:
         progress_callback: Optional[Callable[[int, float, float], None]] = None,
         extraction_shots: int = 1024,  # NEW: shots for solution extraction
         zne_config: Optional[dict] = None,
+        use_partitioning: bool = False, # 2026 Modular Hardware support
     ) -> None:
         if estimator is None:
             raise ValueError("Estimator cannot be None.")
@@ -69,6 +71,7 @@ class PortfolioVQESolver:
         self.progress_callback = progress_callback
         self.extraction_shots = extraction_shots  # NEW
         self.zne_config = zne_config or {}
+        self.use_partitioning = use_partitioning
 
     def solve(self, qubo: QUBOProblem) -> VQEResult:
         num_qubits = qubo.num_variables
@@ -152,6 +155,31 @@ class PortfolioVQESolver:
                 self.progress_callback(len(history), energy, best_so_far)
             return energy
 
+        def partitioned_energy_evaluation(parameters: np.ndarray) -> float:
+            nonlocal best_so_far
+            circuit = ansatz.assign_parameters(parameters)
+            partitions = qubo.metadata.get("partitions", [])
+            
+            if not partitions:
+                logger.warning("No partitions found in QUBO metadata. Falling back to non-partitioned evaluation.")
+                return energy_evaluation(parameters)
+            
+            try:
+                energy = run_partitioned_vqe_step(
+                    self.estimator, circuit, observable, partitions
+                )
+            except Exception as e:
+                logger.error("Partitioned evaluation failed: %s", e)
+                energy = float("inf")
+
+            history.append(energy)
+            if energy < best_so_far:
+                best_so_far = energy
+            best_history.append(best_so_far)
+            if self.progress_callback:
+                self.progress_callback(len(history), energy, best_so_far)
+            return energy
+
         if isinstance(self.parameter_bounds, tuple):
             bounds = [self.parameter_bounds] * ansatz.num_parameters
         elif isinstance(self.parameter_bounds, (int, float)):
@@ -184,7 +212,11 @@ class PortfolioVQESolver:
 
         _ = initial_point  # kept for future warm-start schemes
 
-        result = run_differential_evolution(energy_evaluation, config=config, num_qubits=num_qubits)
+        objective_function = (
+            partitioned_energy_evaluation if self.use_partitioning else energy_evaluation
+        )
+
+        result = run_differential_evolution(objective_function, config=config, num_qubits=num_qubits)
         optimal_parameters = np.asarray(result.x, dtype=float)
         optimal_value = float(result.fun)
 

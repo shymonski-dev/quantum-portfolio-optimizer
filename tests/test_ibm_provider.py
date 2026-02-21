@@ -300,7 +300,7 @@ class TestIBMQuantumConfig:
         config = IBMQuantumConfig()
 
         assert config.device == "ibm_brisbane"
-        assert config.channel == "ibm_quantum"
+        assert config.channel == "ibm_quantum_platform"
         assert config.use_session is True
         assert config.shots == 4096
         assert config.optimization_level == 3

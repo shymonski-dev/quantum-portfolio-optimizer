@@ -14,6 +14,7 @@ from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
 
 from ..simulation.zne import fold_circuit, zne_extrapolate
+from ..simulation.partitioning import run_partitioned_vqe_step # Can be used for QAOA energy too
 from .optimizer_interface import DifferentialEvolutionConfig, run_differential_evolution
 from .qubo_formulation import QUBOProblem
 
@@ -60,6 +61,7 @@ class PortfolioQAOASolver:
         cvar_alpha: float = 1.0,
         mixer_type: str = "x",
         num_assets: Optional[int] = None,
+        use_partitioning: bool = False, # 2026 Modular Hardware support
     ) -> None:
         """Initialize QAOA solver.
 
@@ -76,6 +78,7 @@ class PortfolioQAOASolver:
             cvar_alpha: CVaR tail fraction in (0, 1]. 1.0 = standard expectation value.
             mixer_type: Mixer type, 'x' for standard X-mixer or 'xy' for XY-mixer.
             num_assets: Number of assets to select (required when mixer_type='xy').
+            use_partitioning: Enable circuit partitioning for modular hardware.
         """
         if sampler is None:
             raise ValueError("Sampler is required for QAOA.")
@@ -103,6 +106,7 @@ class PortfolioQAOASolver:
         self.cvar_alpha = cvar_alpha
         self.mixer_type = mixer_type
         self.num_assets = num_assets
+        self.use_partitioning = use_partitioning
 
     def _build_qaoa_circuit(self, qubo: QUBOProblem) -> Tuple[QuantumCircuit, List[Parameter]]:
         """Build parameterized QAOA circuit for the given QUBO.
@@ -403,7 +407,21 @@ class PortfolioQAOASolver:
             except Exception:
                 pass
 
-            if use_local_zne and not has_native_resilience:
+            if self.use_partitioning:
+                partitions = qubo.metadata.get("partitions", [])
+                if partitions:
+                    try:
+                        # For QAOA, we can use the same partitioned energy evaluation logic
+                        energy = run_partitioned_vqe_step(
+                            self.sampler, bound_circuit, qubo.to_pauli(), partitions
+                        )
+                    except Exception as e:
+                        logger.error("Partitioned QAOA evaluation failed: %s", e)
+                        energy = float("inf")
+                else:
+                    logger.warning("No partitions for QAOA. Falling back.")
+                    energy = self._run_circuit_and_get_objective(bound_circuit, qubo)
+            elif use_local_zne and not has_native_resilience:
                 noise_factors = self.zne_config.get("zne_noise_factors", [1, 3, 5])
                 extrapolator = self.zne_config.get("zne_extrapolator", "linear")
                 values = [

@@ -95,6 +95,10 @@ def optimize():
             mixer_type = 'x'
         use_warm_start = data.get('warm_start', True)  # Default enabled
         resolution_qubits = int(data.get('resolution_qubits', 1))  # Default binary
+        
+        # Partitioning & Sectors (2026 Modular Hardware support)
+        use_partitioning = bool(data.get('use_partitioning', False))
+        sectors = data.get('sectors') # Optional Dict[str, List[int]]
 
         # ESG parameters
         esg_scores_raw = data.get('esg_scores', '')
@@ -164,6 +168,7 @@ def optimize():
             enforce_budget=True,
             esg_scores=np.array(esg_scores) if esg_scores else None,
             esg_weight=esg_weight if esg_scores else 0.0,
+            sectors=sectors,
         )
         qubo = qubo_builder.build()
         total_qubits = num_assets * resolution_qubits
@@ -340,6 +345,7 @@ def optimize():
                 cvar_alpha=cvar_alpha,
                 mixer_type=mixer_type,
                 num_assets=xy_num_assets,
+                use_partitioning=use_partitioning,
             )
             logger.info(
                 f"Running QAOA with {qaoa_layers} layers, "
@@ -365,6 +371,7 @@ def optimize():
                 progress_callback=progress_callback,
                 extraction_shots=1024,
                 zne_config=solver_zne_config,
+                use_partitioning=use_partitioning,
             )
             logger.info(f"Running VQE with {ansatz_type} ansatz, reps={reps}")
 

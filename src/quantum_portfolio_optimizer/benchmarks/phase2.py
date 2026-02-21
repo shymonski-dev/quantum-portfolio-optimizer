@@ -221,12 +221,25 @@ def evaluate_noise_levels(
         noise_model = simple_depolarising_noise(p_one=level, p_two=2 * level)
         backend_config = {"name": "local_simulator", "shots": shots, "seed": seed, "noise_model": noise_model}
         _, sampler = get_provider(backend_config)
-        sample_result = sampler.run([(circuit_measure, [])]).result()
-        first = sample_result[0]
-        key = next(iter(first.data.keys()))
-        bitarray = first.data[key]
-        counts = bitarray.get_counts()
-        total_shots = bitarray.num_shots or shots
+        
+        # Handle V1/V2 primitive differences
+        try:
+            # V2 interface
+            job_result = sampler.run([(circuit_measure, [])]).result()
+            # Extract counts from V2 result
+            first = job_result[0]
+            key = next(iter(first.data.keys()))
+            bitarray = first.data[key]
+            counts = bitarray.get_counts()
+            total_shots = bitarray.num_shots or shots
+        except TypeError:
+            # V1 interface (AerSampler)
+            job_result = sampler.run([circuit_measure], shots=shots).result()
+            # Extract counts from V1 result (quasi_dists)
+            dist = job_result.quasi_dists[0]
+            total_shots = shots or 1024
+            counts = {format(k, f"0{qubo_problem.num_variables}b"): v * total_shots for k, v in dist.items()}
+
         energy = 0.0
         num_vars = qubo_problem.num_variables
         for bitstring, count in counts.items():

@@ -211,6 +211,8 @@ class PortfolioQUBO:
         cvar_confidence: float = 0.95,
         esg_scores: Optional[np.ndarray] = None,
         esg_weight: float = 0.0,
+        sectors: Optional[Dict[str, List[int]]] = None,
+        **kwargs: Any,
     ) -> None:
         self.risk_aversion = float(risk_aversion)
         self.transaction_cost = float(transaction_cost)
@@ -224,6 +226,8 @@ class PortfolioQUBO:
         )
         self.enforce_budget = bool(enforce_budget)
         self.budget = float(budget)
+        self.sectors = sectors
+        self._partitions = None
 
         if self.time_steps < 1:
             raise InvalidParameterError("time_steps", self.time_steps, "must be >= 1")
@@ -256,6 +260,12 @@ class PortfolioQUBO:
 
         self.esg_scores = np.asarray(esg_scores, dtype=float) if esg_scores is not None else None
         self.esg_weight = float(esg_weight)
+        
+        # Sector-based partitioning for 2026 Modular Hardware (Kookaburra)
+        self._partitions: Optional[List[List[int]]] = None
+        if self.sectors:
+            self._partitions = self._generate_partitions_from_sectors()
+
         if self.esg_weight != 0.0 and self.esg_scores is None:
             raise ValueError("esg_scores must be provided when esg_weight != 0.0")
         if self.esg_scores is not None and len(self.esg_scores) != self.num_assets:
@@ -331,6 +341,21 @@ class PortfolioQUBO:
             self.asset_max_allocation = asset_array
         else:
             self.asset_max_allocation = None
+
+    def _generate_partitions_from_sectors(self) -> List[List[int]]:
+        """Map asset sectors to qubit indices for circuit partitioning."""
+        if not self.sectors:
+            return []
+        
+        partitions = []
+        for sector_assets in self.sectors.values():
+            sector_indices = []
+            for asset_idx in sector_assets:
+                # Get all qubits (bits) belonging to this asset across all time steps
+                sector_indices.extend(self._asset_indices.get(asset_idx, []))
+            if sector_indices:
+                partitions.append(sector_indices)
+        return partitions
 
     @staticmethod
     def _normalise_returns(
@@ -550,6 +575,9 @@ class PortfolioQUBO:
 
         quadratic = (quadratic + quadratic.T) / 2.0  # Ensure symmetry.
 
+        if self.sectors:
+            self._partitions = self._generate_partitions_from_sectors()
+
         metadata: Dict[str, Any] = {
             "num_assets": self.num_assets,
             "time_steps": self.time_steps,
@@ -566,6 +594,7 @@ class PortfolioQUBO:
             "asset_penalty_strength": self.asset_penalty_strength,
             "risk_metric": self.risk_metric,
             "esg_weight": self.esg_weight,
+            "partitions": self._partitions,
         }
         if self.time_step_budgets is not None:
             metadata["time_step_budgets"] = self.time_step_budgets.tolist()
