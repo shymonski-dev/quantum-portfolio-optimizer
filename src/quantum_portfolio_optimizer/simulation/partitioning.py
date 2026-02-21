@@ -7,7 +7,6 @@ across multiple quantum processor modules (e.g., IBM Kookaburra architecture).
 from __future__ import annotations
 
 import logging
-from typing import List
 
 import numpy as np
 from qiskit import QuantumCircuit
@@ -31,7 +30,7 @@ def run_partitioned_vqe_step(
     sampler: object,
     circuit: QuantumCircuit,
     observable: SparsePauliOp,
-    partitions: List[List[int]],
+    partitions: list[list[int]],
 ) -> float:
     """Run a single VQE energy evaluation using circuit knitting.
 

@@ -7,7 +7,6 @@ sectors that minimize quantum information loss when split across modular hardwar
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -21,9 +20,9 @@ class PortfolioClusturer:
 
     def __init__(self, n_clusters: int = 2):
         self.n_clusters = n_clusters
-        self.labels_: Optional[np.ndarray] = None
+        self.labels_: np.ndarray | None = None
 
-    def cluster_assets(self, returns: pd.DataFrame) -> Dict[str, List[int]]:
+    def cluster_assets(self, returns: pd.DataFrame) -> dict[str, list[int]]:
         """Group assets into sectors based on correlation min-cut.
 
         Args:
@@ -65,7 +64,8 @@ class PortfolioClusturer:
 
 def get_optimal_cut_points(
     returns: pd.DataFrame, max_cluster_size: int = 25
-) -> Dict[str, List[int]]:
+) -> dict[str, list[int]]:
+
     """Determine optimal sectors based on hardware constraints.
 
     Args:
