@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.1] - 2026-02-21
 
 ### Added
+- **Institutional Data Migration**: Successfully transitioned primary data fetching engine to **OpenBB Platform SDK**. Resolved `curl_cffi` session conflicts by pinning `yfinance==0.2.55`. 
 - **AI Sector Clustering**: Implemented `AI Orchestrator` utilizing Spectral Min-Cut graph partitioning. Automatically identifies optimal hardware cut-points based on asset correlation manifolds to minimize modular execution overhead.
 - **Dynamic Circuit Partitioning**: Integration with `qiskit-addon-cutting` to support modular quantum hardware (IBM Kookaburra). Enables "cutting" of large portfolio circuits into smaller sectors for parallel execution.
 - **2026 Web UI Upgrades**: Added "Modular Partitioning" toggles, AI Auto-Clustering options, and JSON sector configuration fields to the advanced frontend settings.

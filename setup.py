@@ -28,6 +28,9 @@ setup(
         "networkx>=3.0",
         "openbb-core>=1.6.0",
         "openbb-equity>=1.6.0",
+        "openbb-yfinance>=1.4.0",
+        "openbb-tiingo>=1.4.0",
+        "yfinance==0.2.55",
     ],
     extras_require={
         "dev": ["pytest>=7.0.0", "pytest-cov>=4.0", "ruff>=0.1.0"],
