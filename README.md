@@ -90,6 +90,19 @@ pip install -e ".[noise]"
 pip install -e ".[all]"
 ```
 
+## Setup & Security
+
+For IBM Quantum hardware, this software utilizes environment variables to ensure API keys are never hardcoded or committed to source control.
+
+```bash
+# For IBM Quantum Platform (Free Tier)
+export IBM_QUANTUM_TOKEN="your_api_key"
+
+# For IBM Cloud (Enterprise/U.S. East)
+export IBM_QUANTUM_TOKEN="your_iam_api_key"
+export IBM_CLOUD_INSTANCE="your_crn_instance"
+```
+
 ## Quick Start
 
 ### Web Interface (Recommended)

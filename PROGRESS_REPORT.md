@@ -113,7 +113,7 @@ ansatz_functional_builders: supported
 - `LICENSE` (MIT), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant v2.1)
 - GitHub Actions CI/CD (`.github/workflows/`) — Python 3.9–3.12 matrix
 - All `YOUR_ORG` placeholders replaced with `shymonski-dev`
-- Test suite: **319 passing, 1 skipped**
+- Test suite: **332 passing, 1 skipped**
 
 ## Architecture (v0.2.0)
 
@@ -185,7 +185,7 @@ qpo
 
 # Tests
 pytest tests/ -v
-# → 319 passed, 1 skipped
+# → 332 passed, 1 skipped
 ```
 
 ## Resolved Issues
@@ -200,4 +200,4 @@ pytest tests/ -v
 | "Warm-start not implemented" (previous future enhancement) | Implemented in v0.2.0 |
 
 ---
-*Last updated: 2026-02-20*
+*Last updated: 2026-02-21*
