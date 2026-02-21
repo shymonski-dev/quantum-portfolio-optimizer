@@ -30,11 +30,12 @@ ibm_quantum:
   # Common options: ibm_brisbane (127q), ibm_kyoto (127q), ibm_osaka (127q)
   device: "ibm_brisbane"
 
-  # Channel: "ibm_quantum" (free tier) or "ibm_cloud" (premium)
-  channel: "ibm_quantum"
+  # Channel: "ibm_quantum_platform" (free tier) or "ibm_cloud" (premium)
+  channel: "ibm_quantum_platform"
 
-  # Instance in format "hub/group/project" (optional, for specific access)
-  # instance: "ibm-q/open/main"
+  # Instance configuration
+  # For ibm_cloud: Use Cloud Resource Name (CRN)
+  # instance: "crn:v1:bluemix:public:quantum-computing:..."
 
   # Session mode - keeps jobs prioritized for iterative algorithms like VQE
   use_session: true
@@ -42,24 +43,27 @@ ibm_quantum:
 
   # Execution settings
   shots: 4096
-  optimization_level: 3  # 0-3, higher = more optimization
+  optimization_level: 3
 
-  # Error mitigation settings
+  # Error mitigation settings (2026 Resilience V2)
   error_mitigation:
-    # Resilience level: 0=none, 1=basic (twirling+DD), 2=advanced (includes ZNE)
-    resilience_level: 1
-
-    # Dynamical decoupling - suppresses decoherence during idle times
+    resilience_level: 2
     dynamical_decoupling: true
-    dd_sequence: "XpXm"  # Options: "XX", "XY4", "XpXm"
-
-    # Pauli twirling - randomizes noise for better mitigation
+    dd_sequence: "XpXm"
     twirling_enabled: true
-
-    # Zero-Noise Extrapolation (ZNE) - requires resilience_level >= 2
-    zne_enabled: false
+    zne_enabled: true
     zne_noise_factors: [1, 3, 5]
-    zne_extrapolator: "exponential"  # Options: "linear", "exponential", "polynomial"
+    zne_extrapolator: "exponential"
+
+# 2026 State-of-the-Art Serverless Profile
+ibm_cloud_2026:
+  name: "ibm_cloud"
+  device: "ibm_fez" # 156-qubit Nighthawk
+  channel: "ibm_cloud"
+  use_ai_transpiler: true
+  ai_transpilation_level: 2
+  use_partitioning: true # Modular Hardware support
+  use_serverless: true # IBM Quantum Serverless SDK integration
 
 # Classical optimizer settings for VQE/QAOA
 optimizer:

@@ -79,40 +79,37 @@ class QUBOProblem:
         return h, j, constant
 
     def to_pauli(self, atol: float = 1e-12) -> SparsePauliOp:
-        """Convert the Ising Hamiltonian into a Qiskit SparsePauliOp."""
+        """Convert the Ising Hamiltonian into a Qiskit SparsePauliOp.
+
+        Optimized for 2026-era large problems using from_sparse_list to
+        minimize classical memory overhead.
+        """
         h, j, constant = self.to_ising()
         num_qubits = self.num_variables
-        labels: List[str] = []
-        coeffs: List[complex] = []
+        
+        sparse_list = []
 
+        # Constant term (Identity)
         if abs(constant) > atol:
-            labels.append("I" * num_qubits)
-            coeffs.append(complex(constant))
+            sparse_list.append(("I" * num_qubits, [], complex(constant)))
 
+        # Linear terms (Z)
         for idx, coeff in enumerate(h):
-            if abs(coeff) <= atol:
-                continue
-            label = ["I"] * num_qubits
-            label[num_qubits - idx - 1] = "Z"  # Qiskit uses little-endian ordering.
-            labels.append("".join(label))
-            coeffs.append(complex(coeff))
+            if abs(coeff) > atol:
+                # Note: Qiskit SparsePauliOp indices are 0 to n-1
+                sparse_list.append(("Z", [idx], complex(coeff)))
 
+        # Quadratic terms (ZZ)
         for i in range(num_qubits):
             for j_idx in range(i + 1, num_qubits):
                 coeff = j[i, j_idx]
-                if abs(coeff) <= atol:
-                    continue
-                label = ["I"] * num_qubits
-                label[num_qubits - i - 1] = "Z"
-                label[num_qubits - j_idx - 1] = "Z"
-                labels.append("".join(label))
-                coeffs.append(complex(coeff))
+                if abs(coeff) > atol:
+                    sparse_list.append(("ZZ", [i, j_idx], complex(coeff)))
 
-        if not labels:
-            labels = ["I" * num_qubits]
-            coeffs = [0.0]
+        if not sparse_list:
+            return SparsePauliOp(["I" * num_qubits], [0.0])
 
-        return SparsePauliOp(labels, coeffs)
+        return SparsePauliOp.from_sparse_list(sparse_list, num_qubits=num_qubits)
 
     def decode_bitstring(self, bitstring: str) -> Dict[str, Any]:
         """Decode a measurement bitstring into portfolio allocations.
@@ -260,11 +257,6 @@ class PortfolioQUBO:
 
         self.esg_scores = np.asarray(esg_scores, dtype=float) if esg_scores is not None else None
         self.esg_weight = float(esg_weight)
-        
-        # Sector-based partitioning for 2026 Modular Hardware (Kookaburra)
-        self._partitions: Optional[List[List[int]]] = None
-        if self.sectors:
-            self._partitions = self._generate_partitions_from_sectors()
 
         if self.esg_weight != 0.0 and self.esg_scores is None:
             raise ValueError("esg_scores must be provided when esg_weight != 0.0")
@@ -297,6 +289,12 @@ class PortfolioQUBO:
             self._time_indices[t_step].append(idx)
             self._asset_time_indices.setdefault((asset, t_step), []).append(idx)
             self._variable_weights[idx] = self._normalisation * self._bit_weights[bit]
+
+        # Sector-based partitioning for 2026 Modular Hardware (Kookaburra)
+        # MUST happen after _asset_indices are pre-computed
+        self._partitions: Optional[List[List[int]]] = None
+        if self.sectors:
+            self._partitions = self._generate_partitions_from_sectors()
 
         self.time_step_budgets: Optional[np.ndarray]
         if time_step_budgets is not None:

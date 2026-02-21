@@ -11,15 +11,14 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from qiskit import QuantumCircuit
-from qiskit.quantum_info import SparsePauliOp
+from qiskit.quantum_info import SparsePauliOp, PauliList
 
 try:
     from qiskit_addon_cutting import (
-        cut_gates,
+        partition_problem,
         generate_cutting_experiments,
         reconstruct_expectation_values,
     )
-    from qiskit_addon_cutting.instructions import CutWire
     CUTTING_AVAILABLE = True
 except ImportError:
     CUTTING_AVAILABLE = False
@@ -27,92 +26,73 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def partition_portfolio_circuit(
-    circuit: QuantumCircuit,
-    partitions: List[List[int]],
-) -> Tuple[List[QuantumCircuit], List[int]]:
-    """Partition a portfolio circuit based on asset groups (sectors).
-
-    Args:
-        circuit: The full parameterized or bound quantum circuit.
-        partitions: List of qubit index groups defining each partition.
-
-    Returns:
-        List of sub-circuits and the cutting metadata.
-    """
-    if not CUTTING_AVAILABLE:
-        raise ImportError("qiskit-addon-cutting is required for circuit partitioning.")
-
-    # Logic: Identify gates that cross partition boundaries and replace them with QPD gates.
-    # For Portfolio VQE/QAOA, these are typically the entangling gates (CX, RZZ).
-    
-    # This is a simplified placeholder for the 2026-era automated partitioning logic.
-    # In a real Kookaburra workflow, we would use automated cut finding.
-    
-    # For now, we manually identify gates to cut based on the partitions.
-    circuit_to_cut = circuit.copy()
-    
-    # Find gates that span across different partitions
-    gates_to_cut = []
-    for i, instruction in enumerate(circuit_to_cut.data):
-        if len(instruction.qubits) == 2:
-            q1 = circuit_to_cut.find_bit(instruction.qubits[0]).index
-            q2 = circuit_to_cut.find_bit(instruction.qubits[1]).index
-            
-            # Check if q1 and q2 belong to different partitions
-            p1 = next((idx for idx, p in enumerate(partitions) if q1 in p), None)
-            p2 = next((idx for idx, p in enumerate(partitions) if q2 in p), None)
-            
-            if p1 != p2:
-                gates_to_cut.append(i)
-
-    if not gates_to_cut:
-        logger.info("No cross-partition gates found. Partitioning might not be necessary.")
-        return [circuit_to_cut], []
-
-    # Apply cutting
-    # Note: qiskit-addon-cutting API usage for late 2026 standards
-    qpd_circuit, bases = cut_gates(circuit_to_cut, gates_to_cut)
-    
-    # Separate the QPD circuit into subcircuits based on the provided partitions
-    # This usually involves identifying the connected components in the QPD circuit.
-    
-    return qpd_circuit, bases
-
-
 def run_partitioned_vqe_step(
-    estimator: object,
+    sampler: object,
     circuit: QuantumCircuit,
     observable: SparsePauliOp,
     partitions: List[List[int]],
-    shots: int = 4096,
 ) -> float:
     """Run a single VQE energy evaluation using circuit knitting.
 
-    This distributes the portfolio problem across multiple (virtual or physical) modules.
+    Args:
+        sampler: Qiskit SamplerV2 primitive.
+        circuit: The bound quantum circuit.
+        observable: The observable to evaluate.
+        partitions: List of qubit index groups defining each partition.
+
+    Returns:
+        Expectation value reconstructed from sub-experiments.
     """
     if not CUTTING_AVAILABLE:
         raise ImportError("qiskit-addon-cutting is required for circuit partitioning.")
 
-    # 1. Partition the circuit
-    qpd_circuit, bases = partition_portfolio_circuit(circuit, partitions)
-    
-    # 2. Partition the observable
-    # We must also split the observable into parts that match the subcircuits.
-    # qiskit-addon-cutting handles this via observable cutting.
-    
-    # Generate experiments (this replaces the single job with a set of sub-experiments)
+    # 1. Map qubit-to-partition labels for qiskit-addon-cutting
+    num_qubits = circuit.num_qubits
+    partition_labels = [None] * num_qubits
+    for p_idx, qubit_indices in enumerate(partitions):
+        for q_idx in qubit_indices:
+            if q_idx < num_qubits:
+                partition_labels[q_idx] = p_idx
+            
+    if None in partition_labels:
+        next_p = len(partitions)
+        for i in range(num_qubits):
+            if partition_labels[i] is None:
+                partition_labels[i] = next_p
+
+    # 2. Convert observable to PauliList
+    pauli_list = PauliList(observable.paulis)
+
+    # 3. Partition the problem
+    partitioned_problem = partition_problem(
+        circuit=circuit,
+        partition_labels=partition_labels,
+        observables=pauli_list
+    )
+
+    # 4. Generate experiments
     subexperiments, coefficients = generate_cutting_experiments(
-        qpd_circuit, observable, bases
+        partitioned_problem.subcircuits,
+        partitioned_problem.subobservables,
+        num_samples=np.inf
     )
-    
-    # 3. Execute sub-experiments
-    # This can be parallelized via Quantum Serverless or IBM Sessions
-    results = estimator.run(subexperiments).result()
-    
-    # 4. Knit results back together
-    expectation_value = reconstruct_expectation_values(
-        results, coefficients, bases
+
+    # 5. Execute sub-experiments
+    # subexperiments is a dict[partition_label, list[QuantumCircuit]]
+    results = {}
+    for label, circuits in subexperiments.items():
+        # Run circuits for this partition
+        job = sampler.run(circuits)
+        results[label] = job.result()
+
+    # 6. Knit results back together
+    reconstructed_values = reconstruct_expectation_values(
+        results,
+        coefficients,
+        partitioned_problem.subobservables
     )
+
+    # Reconstruct gives <Pauli_i>, compute total energy: sum(coeff_i * <Pauli_i>)
+    energy = np.dot(observable.coeffs, reconstructed_values)
     
-    return float(np.real(expectation_value))
+    return float(np.real(energy))

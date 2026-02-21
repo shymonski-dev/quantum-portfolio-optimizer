@@ -754,6 +754,21 @@
                             </label>
                             <p class="info-text">Initialize circuit parameters using Markowitz solution (recommended)</p>
                         </div>
+
+                        <!-- 2026 Modular Hardware Support -->
+                        <div class="form-group" style="border-top: 1px dashed #444; padding-top: 15px; margin-top: 15px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #c0c0c0; font-weight: 600;">
+                                <input type="checkbox" id="use_partitioning" style="width: auto;">
+                                Enable Modular Partitioning (2026)
+                            </label>
+                            <p class="info-text">Supports IBM Kookaburra architecture by cutting circuits into sectors</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sectors">Asset Sectors (JSON format)</label>
+                            <textarea id="sectors" rows="3" style="width: 100%; background: #0a0a0a; color: #e0e0e0; border: 1px solid #333; border-radius: 4px; padding: 10px; font-family: monospace; font-size: 0.85rem;" placeholder='{"Tech": [0, 1], "Energy": [2, 3]}'></textarea>
+                            <p class="info-text">Define asset groups for partitioning. Indices match the ticker list order (0, 1, 2...).</p>
+                        </div>
                     </div>
                 </div>
 
@@ -1244,6 +1259,12 @@
                 esg_scores: document.getElementById('esg_scores').value,
                 esg_weight: document.getElementById('esg_weight').value,
                 num_assets_select: document.getElementById('num_assets_select').value || null,
+                use_partitioning: document.getElementById('use_partitioning').checked,
+                sectors: (function() {
+                    const raw = document.getElementById('sectors').value.strip;
+                    try { return raw ? JSON.parse(document.getElementById('sectors').value) : null; }
+                    catch(e) { console.error("Invalid sectors JSON", e); return null; }
+                })(),
             };
 
             // Validate IBM credentials if IBM Quantum is selected
