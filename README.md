@@ -325,6 +325,21 @@ pytest tests/test_qaoa_solver.py -v
 
 Current status: **331 passed, 1 skipped** on Python 3.12 / macOS (February 2026).
 
+## Future Research & v0.3.0 Roadmap
+
+While the current version provides a state-of-the-art implementation of Markowitz portfolio optimization, the v0.3.0 roadmap targets problems in the "Hard" complexity class where true Quantum Advantage resides.
+
+### 1. Non-Gaussian Path Integrals
+Standard financial models assume Gaussian (Normal) return distributions. v0.3.0 will explore **non-Hermitian quantum mechanics (PT-Symmetry)** to model leptokurtic "fat-tailed" markets. Using path integral kernels that naturally account for extreme events, the optimizer will minimize risk against **"Path-Based Ruin"** rather than simple variance.
+
+### 2. Crash-Manifold Prediction (Quantum TDA)
+Market crashes are often topological collapses of high-dimensional data structures. We are researching the integration of **Quantum Topological Data Analysis (TDA)** to monitor the "shape" of the market manifold. 
+- **Persistent Homology**: Using Betti numbers to detect structural brittleness.
+- **Early Warning System**: Monitoring spikes in the **Persistence Landscape Norm** to predict when a portfolio is approaching a "cliff edge" or manifold singularity.
+
+### 3. Scaling to 4,000+ Qubits
+Leveraging the **IBM Kookaburra** architecture, we will extend the **Modular Partitioning** logic to support 100+ assets with high-resolution discretization, utilizing **Quantum Serverless** for real-time circuit knitting across multi-chip systems.
+
 ## Requirements
 
 - Python 3.10+

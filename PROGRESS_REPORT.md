@@ -24,6 +24,19 @@ ansatz_functional_builders: supported
 circuit_knitting: supported
 ```
 
+## v0.3.0 Vision: The Frontier
+
+All foundational goals for v0.2.x have been met. The project now shifts focus toward advanced research areas that leverage the unique strengths of quantum mechanics for non-linear financial modeling.
+
+### Goal 1: Beyond Gaussianity
+Transition the objective function from mean-variance to **Path Integral** formalisms. This involves using PT-Symmetric quantum mechanics to model "fat-tailed" distributions, allowing for a more scientifically accurate representation of black-swan risk.
+
+### Goal 2: Topological Risk Engine
+Implement a **Quantum TDA** module. This engine will calculate Betti numbers and persistent homology of the asset correlation manifold in real-time. The goal is to provide a "Curvature Warning" when the portfolio structure becomes topologically unstable, signaling an imminent market regime shift or crash.
+
+### Goal 3: Kookaburra Integration (Modular Scaling)
+Scale the current partitioning framework to the full **1,386-qubit multi-chip modules**. This includes implementing automated AI-driven "Min-Cut" optimization to find the most efficient points to partition large portfolios across physical hardware boundaries.
+
 ## Completed Phases
 
 ### Phase 8 — 2026 Hardware Upgrade
