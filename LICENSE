@@ -1,21 +1,37 @@
-MIT License
+# Dual Licensing Model
 
-Copyright (c) 2024 Local Quantum Lab
+This software is distributed under a dual-license model designed to support open-source research while sustaining commercial development.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## 1. Open Source License (AGPLv3)
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+For researchers, students, and open-source contributors, the code is available under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+### Summary of AGPLv3 Obligations:
+- **Copyleft:** If you modify this software and distribute it (or make it available over a network), you must release your source code under the same AGPLv3 license.
+- **Attribution:** You must preserve copyright notices and license texts.
+- **No Warranty:** The software is provided "as is".
+
+This ensures that improvements to the core scientific algorithms remain available to the community.
+
+---
+
+## 2. Commercial Business License
+
+For financial institutions, hedge funds, enterprises, and proprietary trading firms who wish to:
+- Use this software in a closed-source environment.
+- Integrate it into proprietary trading systems without releasing source code.
+- Receive dedicated support, SLAs, and access to advanced features (e.g., PEC Resilience Level 3).
+
+**You must purchase a Commercial License.**
+
+### Commercial Benefits:
+- **Private Use:** No obligation to share your modifications or strategies.
+- **Enterprise Support:** Priority access to 2026-era updates (ISA maps, AI models).
+- **Indemnification:** Legal protection against IP claims.
+
+### Contact
+To obtain a commercial license, please contact: **licensing@shymonski-dev.com**
+
+---
+
+*By using this software, you agree to be bound by the terms of the AGPLv3 unless you have executed a separate Commercial License agreement with the copyright holder.*
