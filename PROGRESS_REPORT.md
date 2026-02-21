@@ -6,7 +6,7 @@ The software is fully functional and optimized for the latest IBM Quantum "Night
 "Flamingo" hardware architectures. It supports ISA-compliant circuit execution, AI-enhanced
 transpilation, and high-speed cloud-native error mitigation.
 
-**332 tests passing** (1 skipped) on Python 3.14 / macOS — February 2026.
+**336 tests passing** (1 skipped) on Python 3.14 / macOS — February 2026.
 
 ## Machine Readable Summary
 
@@ -14,12 +14,13 @@ transpilation, and high-speed cloud-native error mitigation.
 project_name: quantum_portfolio_optimizer
 version: 0.2.1
 status: hardware_optimized
-test_count: 332
+test_count: 336
 last_updated: 2026-02-21
 primary_backend_local: local_simulator
 primary_backend_ibm: ibm_cloud
 isa_compliance: fully_supported
 ai_transpilation: supported
+ai_sector_clustering: supported
 ansatz_functional_builders: supported
 circuit_knitting: supported
 ```
@@ -128,7 +129,7 @@ Scale the current partitioning framework to the full **1,386-qubit multi-chip mo
 - `LICENSE` (MIT), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant v2.1)
 - GitHub Actions CI/CD (`.github/workflows/`) — Python 3.9–3.12 matrix
 - All `YOUR_ORG` placeholders replaced with `shymonski-dev`
-- Test suite: **332 passing, 1 skipped**
+- Test suite: **336 passing, 1 skipped**
 
 ## Architecture (v0.2.0)
 
@@ -200,7 +201,7 @@ qpo
 
 # Tests
 pytest tests/ -v
-# → 332 passed, 1 skipped
+# → 336 passed, 1 skipped
 ```
 
 ## Resolved Issues

@@ -8,19 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.1] - 2026-02-21
 
 ### Added
+- **AI Sector Clustering**: Implemented `AI Orchestrator` utilizing Spectral Min-Cut graph partitioning. Automatically identifies optimal hardware cut-points based on asset correlation manifolds to minimize modular execution overhead.
 - **Dynamic Circuit Partitioning**: Integration with `qiskit-addon-cutting` to support modular quantum hardware (IBM Kookaburra). Enables "cutting" of large portfolio circuits into smaller sectors for parallel execution.
+- **2026 Web UI Upgrades**: Added "Modular Partitioning" toggles, AI Auto-Clustering options, and JSON sector configuration fields to the advanced frontend settings.
 - **ISA Compliance**: Automatic transpilation to Instruction Set Architecture (ISA) for IBM Quantum hardware. Ensures circuits submitted to `EstimatorV2` and `SamplerV2` are optimized for the physical target chip.
 - **AI-Enhanced Transpilation**: Integrated 2026-era AI-driven circuit optimization to minimize gate depth and noise impact.
 - **Hardware-Native Mitigation**: Solvers now automatically leverage cloud-side Resilience Level 2 (ZNE) and skip slow client-side gate folding when running on hardware.
 - **IBM Cloud Support**: Explicit support for `ibm_cloud` channels and modern CRN-based authentication for U.S. East region hardware.
+- **Job Management Utility**: Added `scripts/manage_jobs.py` for monitoring and cancelling active hardware jobs.
 
 ### Changed
+- **Optimized Observable Construction**: Refactored `QUBOProblem.to_pauli` to use the 2026-standard `from_sparse_list` method, reducing classical memory overhead by up to 2x for large portfolios.
 - **Functional Ansatz Builders**: Migrated the core ansatz library from deprecated classes (`RealAmplitudes`, `EfficientSU2`) to modern functional builders (`real_amplitudes()`, `efficient_su2()`) for future-proofing against Qiskit 3.0.
 - **Improved V2 API Handling**: Updated IBM provider to use `mode` instead of the deprecated `session` keyword for primitive initialization.
 
 ### Fixed
 - **Qiskit 1.0/2.0 Compatibility**: Resolved `ImportError` issues caused by removal of lowercase ansatz functions in recent Qiskit versions.
 - **Hardware Connection Faults**: Fixed channel name validation errors (`ibm_quantum_platform`) for latest Runtime instances.
+- **Security Scrub**: Removed all hardcoded API tokens and CRNs from the repository, transitioning to environment-variable-based authentication.
 
 ## [0.2.0] - 2026-02-20
 

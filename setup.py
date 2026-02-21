@@ -7,11 +7,11 @@ README = (BASE_DIR / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="local-quantum-portfolio-optimizer",
-    version="0.2.0",
-    description="Local quantum portfolio optimization toolkit",
+    version="0.2.1",
+    description="Institutional-grade quantum portfolio optimization toolkit",
     long_description=README,
     long_description_content_type="text/markdown",
-    author="Local Quantum Lab",
+    author="shymonski-dev",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=[
@@ -25,12 +25,14 @@ setup(
         "yfinance>=0.2.0",
         "click>=8.0",
         "flask>=2.3.0",
+        "qiskit-addon-cutting>=0.2.0",
+        "networkx>=3.0",
     ],
     extras_require={
         "dev": ["pytest>=7.0.0", "pytest-cov>=4.0", "ruff>=0.1.0"],
         "noise": ["qiskit-aer>=0.14.0"],
-        "ibm": ["qiskit-ibm-runtime>=0.20.0"],
-        "all": ["qiskit-aer>=0.14.0", "qiskit-ibm-runtime>=0.20.0"],
+        "ibm": ["qiskit-ibm-runtime>=0.40.0"],
+        "all": ["qiskit-aer>=0.14.0", "qiskit-ibm-runtime>=0.40.0"],
     },
     project_urls={
         "Homepage": "https://github.com/shymonski-dev/quantum-portfolio-optimizer",
@@ -41,7 +43,8 @@ setup(
     python_requires=">=3.10",
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",
+        "Intended Audience :: Financial and Insurance Industry",
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: Physics",
     ],

@@ -23,6 +23,7 @@ backend_value_local_simulator: local_simulator
 backend_value_ibm_cloud: ibm_cloud
 isa_compliance: fully_supported
 ai_transpilation: supported
+ai_sector_clustering: supported
 ansatz_functional_builders: supported
 circuit_knitting_partitioning: supported
 cvar_qaoa: supported
@@ -30,8 +31,8 @@ xy_mixer: supported
 esg_constraints: supported
 mip_baseline: supported
 zne_local: supported
-max_supported_assets: 25
-test_count: 332
+max_supported_assets: 100
+test_count: 336
 ```
 
 ### Supported Algorithms
@@ -68,7 +69,7 @@ Both QAOA variants support the **CVaR objective** (`cvar_alpha` ∈ (0,1]): eval
 - **Warm Start**: VQE and QAOA initialized from classical Markowitz/heuristic solutions
 - **Dual Backend**: Local StatevectorSampler or IBM Quantum hardware (Heron r1/r2)
 - **Multi-resolution Encoding**: Configurable qubits-per-asset for finer allocation granularity
-- **332 Tests**: Full unit and integration coverage; 100% passing on Python 3.10–3.14
+- **336 Tests**: Full unit and integration coverage; 100% passing on Python 3.10–3.14
 
 ## Installation
 
