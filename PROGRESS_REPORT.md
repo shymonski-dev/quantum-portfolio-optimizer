@@ -126,7 +126,7 @@ Scale the current partitioning framework to the full **1,386-qubit multi-chip mo
   ESG scores/weight inputs, num-assets-to-select field, MIP column in comparison table
 
 #### Open-Source Governance
-- `LICENSE` (MIT), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant v2.1)
+- Dual-licensing model (`LICENSE` AGPLv3/Commercial), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant v2.1)
 - GitHub Actions CI/CD (`.github/workflows/`) — Python 3.9–3.12 matrix
 - All `YOUR_ORG` placeholders replaced with `shymonski-dev`
 - Test suite: **336 passing, 1 skipped**

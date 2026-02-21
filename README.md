@@ -1,7 +1,7 @@
 # Quantum Portfolio Optimizer
 
 [![Tests](https://github.com/shymonski-dev/quantum-portfolio-optimizer/actions/workflows/tests.yml/badge.svg)](https://github.com/shymonski-dev/quantum-portfolio-optimizer/actions/workflows/tests.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Qiskit 2.x](https://img.shields.io/badge/Qiskit-2.x-6929c4.svg)](https://qiskit.org)
 
@@ -360,7 +360,7 @@ Leveraging the **IBM Kookaburra** architecture, we will extend the **Modular Par
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+This software is dual-licensed under the **GNU Affero General Public License v3 (AGPLv3)** for open-source use and a **Commercial License** for proprietary enterprise use. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 

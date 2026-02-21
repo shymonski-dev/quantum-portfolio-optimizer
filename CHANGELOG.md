@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Assets-to-select (K) input for MIP baseline and XY-mixer cardinality
   - MIP column added to the Quantum vs Classical comparison table
 - **GitHub Actions CI/CD**: `.github/workflows/` — automated testing on Python 3.9–3.12
-- **Open-source governance**: `LICENSE` (MIT), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`
+- **Open-source governance**: Dual-licensing model (`LICENSE` AGPLv3/Commercial), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`
 - **Warm-start system** (`core/warm_start.py`): `WarmStartConfig`, `warm_start_vqe`,
   `warm_start_qaoa` — initializes circuit parameters from the Markowitz solution.
 - **Quality scorer** (`postprocessing/quality_scorer.py`): Composite A–F grade based on
